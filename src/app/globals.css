@@ -1,26 +1,596 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+
+  /* ── Arcompsol brand ──────────────────────────────────────────────
+     Ported from the MUI project's src/styles/colors.ts. Exposed as
+     Tailwind utilities (bg-brand, text-ink-muted, ...) so nothing has to
+     reach for a hex literal in a className. The shadcn semantic tokens
+     below (:root) are re-pointed at these, which is what makes a stock
+     shadcn <Button> or <Card> come out on-brand with no overrides. */
+  --color-brand: var(--brand);
+  --color-brand-on-dark: var(--brand-on-dark);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-dark: var(--brand-dark);
+  --color-brand-navy: var(--brand-navy);
+
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+
+  --color-surface: var(--surface);
+  --color-surface-alt: var(--surface-alt);
+
+  --font-heading: var(--font-heading);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+
+  /* ── Arcompsol palette: ink and paper, deep forest accent ─────────────
+     WARM throughout. The previous scheme was cool: #38B089 green, #00BDFF
+     cyan and a #011334 prussian-blue footer over neutral-grey surfaces. Warm
+     paper under cool accents is the mixed-temperature palette that makes a
+     page feel assembled rather than designed, so the darks and the accent
+     moved warm together with the surfaces.
+
+     The LOGO is still #38B089 and is not changing. That is deliberate: the
+     accent here is the same hue family, several steps darker, so the bright
+     green mark reads as the brand signature against a quieter interface
+     rather than competing with it. Do not re-introduce #38B089 as a UI
+     colour — at 12px on paper it measures 2.59:1 and fails AA, which is
+     exactly why every SectionEyebrow was failing before this change.
+
+     Every pairing is measured. Worst case on the page is ink-muted on
+     --secondary at 5.63:1; AA needs 4.5:1. */
+  --brand: #1F5F4B;            /* deep forest — buttons, eyebrows, focus ring */
+  /* The SAME accent cannot serve both grounds. --brand is deep forest so it
+     reads on warm paper (7.19:1); on the dark footer panel that identical
+     colour measures 2.20:1 and fails outright. This is the on-dark twin, and
+     it is exactly the logo green — so the mark's colour returns to the
+     interface in the one place it actually works. 6.10:1 on --brand-navy. */
+  --brand-on-dark: #38B089;
+  --brand-deep: #123A2E;       /* gradient end, pill hover */
+  --brand-blue: #2E7C63;       /* NAME IS HISTORICAL. Was #00BDFF cyan, the one
+                                  cool note left in a warm palette. Now a lighter
+                                  forest so the outline button and the hero glow
+                                  stay on-palette. Rename when convenient. */
+  --brand-dark: #1E2B24;       /* headings — was #1D2740 blueWhale (cool) */
+  --brand-navy: #16211C;       /* footer panel — was #011334 prussian (cool) */
+
+  --ink: #15171B;              /* 17.19:1 on --surface */
+  --ink-soft: #3C4149;         /*  9.84:1 */
+  --ink-muted: #5A5751;        /*  6.90:1 on surface, 5.63:1 on secondary */
+  --ink-faint: #B3ADA1;        /* footer/muted copy */
+
+  /* ── Surfaces ─────────────────────────────────────────────────────────
+     These carry a slight BRAND TINT rather than being neutral grey, and they
+     are spaced further apart than they were.
+
+     They began as #FFFFFF / #FAFAFA / #F5F5F5: three surfaces spanning 3.5
+     L* points out of 100, all at chroma 0. That is one colour with rounding
+     error, and it is why bands did not separate and why a translucent card
+     on the services panel differed from its own background by 3.5 points.
+
+     They now span 7.9 points and are warm rather than neutral. Ink holds
+     17.19:1 on --surface and the worst pairing anywhere is 5.63:1. */
+  --surface: #FBFAF7;          /* L*  98.3  warm paper, not pure white */
+  --surface-alt: #F3F0EA;      /* L*  94.9  backgroundSecondary */
+
+  /* shadcn semantics re-pointed at the brand. Overriding HERE rather than
+     per-component is why a plain <Button> or <Card> is already on-brand —
+     change a line below and every shadcn primitive follows. */
+  --foreground: var(--ink);
+  --primary: var(--brand-dark);
+  --primary-foreground: #FBFAF7;
+  --secondary: #E8E3DA;        /* L*  90.4 */
+  --secondary-foreground: var(--ink);
+  --muted: #E8E3DA;
+  --muted-foreground: var(--ink-soft);
+  --accent: #E8E3DA;
+  --accent-foreground: var(--ink);
+  --border: #DDD7CC;           /* L*  86.2 */
+  --input: #CFC7B8;            /* L*  80.5 */
+  /* The focus ring follows the PRIMARY brand, not the secondary one. This was
+     --brand-blue (#00BDFF), carried over from the MUI theme's focus outline, so
+     tabbing through the site lit every control in cyan while every other
+     affordance — buttons, links, carousel dots — was green.
+
+     brand-blue is still a real part of the palette (the brandOutline button,
+     the hero glow); the point is that a focus ring is an affordance rather than
+     brand expression, and it should match the colour the rest of the interface
+     already uses to mean "this is interactive". */
+  --ring: var(--brand);
+  --card: var(--surface);
+  --card-foreground: var(--ink);
+  --radius: 0.75rem;
+
+  /* ── Shadow hues ──────────────────────────────────────────────────────
+     Pure black at low opacity is what makes a shadow read as "default CSS"
+     rather than as light falling on a surface. A real shadow is the surface
+     colour darkened, not grey laid over it — so these carry the navy that
+     anchors the palette, and the brand-lift ones carry the green they sit
+     under. --shadow-brand replaced rgba(30,64,175,…), a blue-800 inherited
+     verbatim from the original MUI theme (theme.ts:243) and sitting under a
+     GREEN gradient button the whole time.
+
+     These MUST track the palette. Left at the old prussian/bright-green
+     values they were the last cool note on a warm page, and a cool shadow
+     under a warm surface reads as dirt rather than as depth. */
+  --shadow-tint: 22 33 28;     /* --brand-navy #16211C */
+  --shadow-brand: 31 95 75;    /* --brand      #1F5F4B */
+}
+
+/* There is deliberately NO `.dark { ... }` rule.
+   It held 30 lines of stock shadcn greys, nothing ever added the class, and
+   next-themes was installed but never mounted — so it was dead weight that
+   also happened to be wrong: neutral greys against a warm palette.
+
+   The @custom-variant above STAYS. It scopes `dark:` to a `.dark` ancestor
+   rather than to prefers-color-scheme, which is what stops shadcn's 17 built-in
+   dark: variants firing for anyone whose OS is in dark mode. Delete that line
+   and a light-only site starts half-rendering in dark on their machine.
+
+   To add real dark mode later: define the tokens here, mount a provider, and
+   budget for the 49 hardcoded white/navy literals across 10 components that
+   currently assume "light page, dark footer". */
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans scroll-smooth;
+  }
+
+  /* ── Type scale ──────────────────────────────────────────────────────
+     A deliberate ramp rather than "each heading a bit bigger than the last".
+     The jump from h1 to h2 is large (60px -> 36px) so a page reads as sections
+     under a title, not as a flat list of similar-sized lines.
+
+     Tracking tightens as size grows. Letter-spacing that looks right at 16px
+     looks loose and airy at 60px, which is what makes large headings read as
+     "default" rather than designed.
+
+     Poppins is bound HERE, once, rather than as a font class on each heading.
+     Geometric for display, humanist for reading - see layout.tsx.
+
+     text-pretty on every heading: it forbids a single word alone on the last
+     line. An orphan is the most common reason a headline looks accidental
+     rather than set, and it is the one typographic flaw that changes with the
+     viewport, so it is invisible at the width you happen to design at.       */
+  h1 {
+    @apply font-heading text-[2.25rem] leading-[1.05] font-semibold tracking-[-0.03em] text-ink text-pretty md:text-[3.25rem] lg:text-[3.75rem];
+  }
+  h2 {
+    @apply font-heading text-[1.75rem] leading-[1.15] font-semibold tracking-[-0.02em] text-ink text-pretty md:text-4xl;
+  }
+  h3 {
+    @apply font-heading text-lg leading-snug font-semibold tracking-[-0.01em] text-ink text-pretty md:text-xl;
+  }
+  p {
+    @apply text-ink-muted leading-relaxed;
+  }
+
+  /* Body copy is capped by CHARACTER count, not by container width. ~65
+     characters is the span the eye tracks comfortably; past roughly 80 the
+     return sweep starts landing on the wrong line. A percentage max-width
+     cannot express this - it changes with the font size. */
+  .measure {
+    max-width: 65ch;
+  }
+  .measure-tight {
+    max-width: 46ch;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ── Scroll reveal ────────────────────────────────────────────────────────
+   The hidden state lives inside `prefers-reduced-motion: no-preference`, so
+   anyone who has asked their OS to reduce motion never has content hidden from
+   them in the first place - no JavaScript has to run for them to read the page.
+
+   The <noscript> block in layout.tsx forces everything visible when scripts do
+   not run. Without it a failed or blocked bundle leaves the page blank, which
+   is the classic way scroll animations break a site for a subset of users who
+   then just see nothing.                                                     */
+@media (prefers-reduced-motion: no-preference) {
+  [data-reveal] {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+  [data-reveal="shown"] {
+    opacity: 1;
+    transform: none;
+  }
 }
+
+@layer utilities {
+  /* Soft brand-tinted glow behind the hero. Two offset radial gradients rather
+     than an image: no request, no layout cost, and it scales to any viewport. */
+  .bg-hero-glow {
+    background:
+      radial-gradient(60% 50% at 50% 0%, color-mix(in oklab, var(--brand) 14%, transparent) 0%, transparent 70%),
+      radial-gradient(40% 40% at 85% 30%, color-mix(in oklab, var(--brand-blue) 10%, transparent) 0%, transparent 70%),
+      var(--surface);
+  }
+
+  /* ── Hero light ────────────────────────────────────────────────────────
+     The interactive version of the glow above, used ONLY on the landing hero.
+     Same two washes, but each is a real element that can be moved on the
+     compositor, plus a third that fires on click. See hero-gradient.tsx for
+     the pointer maths and for why this is CSS and not WebGL.
+
+     The washes SUBTRACT light. --surface is L* 98.3, so a lighter radial on it
+     is not faint, it is absent. Every tint here mixes toward --brand.
+
+     Percentages are contrast-budgeted, not picked by eye. The hero paragraph
+     is --ink-soft #3C4149, and the worst case on the page is a ripple crossing
+     under it while the near wash is also there. Raise these and re-measure, or
+     do not raise them. */
+  .hero-light {
+    position: relative;
+    /* Confines the z-index -1 layers to this section. Without it they would
+       escape behind the page background and vanish. */
+    isolation: isolate;
+    overflow: hidden;
+    background: var(--surface);
+  }
+
+  .hero-light-layer {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    /* It covers both CTAs. */
+    pointer-events: none;
+  }
+
+  /* Rest position is the centre of the top edge, matching the first radial in
+     .bg-hero-glow, so the no-JS render is the old static hero. */
+  .hero-light-near {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    margin: -410px 0 0 -590px;
+    height: 820px;
+    width: 1180px;
+    border-radius: 50%;
+    background: radial-gradient(
+      closest-side,
+      color-mix(in oklab, var(--brand) 15%, transparent),
+      transparent 72%
+    );
+    transform: translate3d(var(--near-x, 0px), var(--near-y, 0px), 0);
+    /* Slow easing back to rest, fast while tracking. One duration that suited
+       both would either trail the cursor or snap on exit. */
+    transition: transform 620ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .hero-light-far {
+    position: absolute;
+    top: 30%;
+    left: 85%;
+    margin: -280px 0 0 -380px;
+    height: 560px;
+    width: 760px;
+    border-radius: 50%;
+    background: radial-gradient(
+      closest-side,
+      color-mix(in oklab, var(--brand-blue) 11%, transparent),
+      transparent 74%
+    );
+    transform: translate3d(var(--far-x, 0px), var(--far-y, 0px), 0);
+    transition: transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* The far wash stays slower even mid-track. Equal durations would lock the
+     two planes together and the parallax would collapse. */
+  .hero-light[data-tracking="true"] .hero-light-near {
+    transition-duration: 110ms;
+  }
+  .hero-light[data-tracking="true"] .hero-light-far {
+    transition-duration: 320ms;
+  }
+
+  /* Authored at final diameter and scaled DOWN by the animation — see
+     hero-gradient.tsx. Opacity is driven by keyframes; the tint strength lives
+     here so it stays in the token system. */
+  .hero-light-ripple {
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: -450px 0 0 -450px;
+    height: 900px;
+    width: 900px;
+    border-radius: 50%;
+    background: radial-gradient(
+      closest-side,
+      color-mix(in oklab, var(--brand) 20%, transparent),
+      color-mix(in oklab, var(--brand) 7%, transparent) 55%,
+      transparent 76%
+    );
+    opacity: 0;
+    will-change: transform, opacity;
+  }
+
+  /* The script already bails before writing any of the custom properties, so
+     this is belt and braces — it also covers the case where the setting is
+     turned on after the listeners are attached. */
+  @media (prefers-reduced-motion: reduce) {
+    .hero-light-near,
+    .hero-light-far {
+      transform: none !important;
+      transition: none;
+    }
+    .hero-light-ripple {
+      display: none;
+    }
+  }
+
+  /* Faint grid, used behind tinted bands to stop large flat areas reading as
+     empty. Masked so it fades out before it reaches the section edges. */
+  .bg-grid {
+    background-image:
+      linear-gradient(to right, color-mix(in oklab, var(--ink) 4%, transparent) 1px, transparent 1px),
+      linear-gradient(to bottom, color-mix(in oklab, var(--ink) 4%, transparent) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 40%, transparent 100%);
+  }
+}
+
+@layer base {
+  /* Long unbroken strings - an email address, a URL, a company name - are the
+     usual cause of a page that scrolls sideways on a phone. Breaking them is
+     always better than a horizontal scrollbar on the whole document. */
+  a,
+  blockquote,
+  p {
+    overflow-wrap: anywhere;
+  }
+}
+
+@layer base {
+  /* ── Hidden scrollbars ────────────────────────────────────────────────
+     The page still scrolls by every normal means - wheel, trackpad, keyboard,
+     touch, and the scroll thumb's drag target is simply not painted. Only the
+     visual indicator is removed.
+
+     Worth knowing what this costs: the scrollbar is the only thing on screen
+     that says how long the page is and where in it you are. On the long
+     careers page that is a real signal to give up. It is a deliberate
+     aesthetic choice, not a free one.
+
+     Three declarations because no single one works everywhere: scrollbar-width
+     is the standard (Firefox), -ms-overflow-style covers legacy Edge, and the
+     ::-webkit- pseudo-element covers Chrome and Safari. Dropping any one of
+     them leaves the bar visible in that browser only, which is the kind of bug
+     you never see on your own machine. */
+  html {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  html::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer components {
+
+    /* ── Flip card ────────────────────────────────────────────────────────
+     Two faces stacked in 3D space; the container rotates 180° and
+     backface-visibility decides which one you see.
+
+     Driven by data-flipped, set from React state on click — NOT by :hover.
+     That is what lets the same three rules serve mouse, keyboard and touch
+     alike: a phone has no hover, so a hover-driven version needed a whole
+     separate (hover: none) branch here just to keep the description
+     reachable. A click works everywhere, so that branch is gone.           */
+  .flip {
+    perspective: 1200px;
+  }
+
+  /* ── Hero 3D ──────────────────────────────────────────────────────────
+     Real 3D space, not a fake shear. `perspective` on the container puts a
+     camera in front of the scene; `preserve-3d` on the stage stops the
+     browser flattening its children into the parent's plane, which is the
+     one property people leave out and then wonder why translateZ does
+     nothing.
+
+     The glow sits at -90px and the art at +40px, so they sweep through
+     different arcs as the stage rotates. That parallax is the depth cue.
+     Put them on the same plane and you have a picture on a hinge.
+
+     See hero-visual.tsx: --tilt-x / --tilt-y are written by the pointer
+     directly onto the node, so React never re-renders during the movement. */
+  .tilt3d {
+    perspective: 1100px;
+    perspective-origin: 50% 50%;
+  }
+
+  .tilt3d-stage {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    transform-style: preserve-3d;
+    transform: rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+    /* Slow easing back to rest, fast while tracking. One transition that
+       suited both would either lag behind the cursor or snap on exit. */
+    transition: transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .tilt3d[data-tracking="true"] .tilt3d-stage {
+    transition-duration: 90ms;
+  }
+
+  .tilt3d-art {
+    position: relative;
+    height: 100%;
+    width: 100%;
+    transform: translateZ(40px);
+  }
+
+  .tilt3d-glow {
+    position: absolute;
+    inset: 8% 6%;
+    transform: translateZ(-90px);
+    border-radius: 50%;
+    background: radial-gradient(
+      closest-side,
+      color-mix(in oklab, var(--brand) 24%, transparent),
+      color-mix(in oklab, var(--brand-blue) 10%, transparent) 62%,
+      transparent 80%
+    );
+    filter: blur(38px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tilt3d-stage {
+      transform: none !important;
+      transition: none;
+    }
+  }
+
+  .flip-inner {
+    position: relative;
+    height: 100%;
+    transform-style: preserve-3d;
+    transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  /* Both faces are absolute, so the CONTAINER must carry a height — see the
+     min-h on ServiceCard. Without it the tiles collapse to nothing in a
+     single-column grid, where rows are sized by content. */
+  .flip-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+  }
+
+  .flip-back {
+    transform: rotateY(180deg);
+  }
+
+  .flip[data-flipped="true"] .flip-inner {
+    transform: rotateY(180deg);
+  }
+
+  /* A 600ms 3D rotation is exactly the movement this setting exists to turn
+     off — but the INFORMATION has to survive, so the flip becomes a crossfade
+     rather than being removed. Keyed off the same data attribute, so the
+     click still works and only the way it resolves changes. */
+  @media (prefers-reduced-motion: reduce) {
+    .flip-inner {
+      transform: none !important;
+      transition: none;
+    }
+    .flip-face {
+      transition: opacity 200ms linear;
+    }
+    .flip-back {
+      transform: none;
+      backface-visibility: visible;
+      opacity: 0;
+    }
+    .flip[data-flipped="true"] .flip-back {
+      opacity: 1;
+    }
+    .flip[data-flipped="true"] .flip-front {
+      opacity: 0;
+    }
+  }
+}
+
+@layer utilities {
+  /* For any scrollable child that should hide its bar independently — a
+     horizontal chip row, an overflowing table. The page-level rule above does
+     not cascade to nested scroll containers. */
+  .scrollbar-hidden {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+}
+
