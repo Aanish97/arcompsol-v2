@@ -42,6 +42,7 @@
  */
 import type { ComponentProps, ReactNode } from "react";
 
+import { StaggerText } from "@/components/common/stagger-text";
 import { cn } from "@/lib/utils";
 
 type SectionProps = ComponentProps<"section"> & {
@@ -127,7 +128,16 @@ export function SectionHeading({
         className,
       )}
     >
-      {children}
+      {/* Staggered only when the heading is a plain string. Anything else (the
+          hero's two-tone h1) renders untouched rather than having its element
+          tree pulled apart to find text nodes. Needs an ancestor carrying
+          [data-reveal]; without one the words simply show immediately, which is
+          a correct fallback rather than a broken state. */}
+      {typeof children === "string" ? (
+        <StaggerText text={children} />
+      ) : (
+        children
+      )}
     </Tag>
   );
 }

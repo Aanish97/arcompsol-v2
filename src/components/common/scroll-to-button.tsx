@@ -33,6 +33,7 @@
 import type { ComponentProps } from "react";
 
 import { Button } from "@/components/ui/button";
+import { scrollToId } from "@/lib/scroll-to";
 
 export function ScrollToButton({
   targetId,
@@ -40,10 +41,7 @@ export function ScrollToButton({
   ...props
 }: ComponentProps<typeof Button> & { targetId: string }) {
   return (
-    <Button
-      {...props}
-      onClick={() => document.getElementById(targetId)?.scrollIntoView()}
-    >
+    <Button {...props} onClick={() => scrollToId(targetId)}>
       {children}
     </Button>
   );

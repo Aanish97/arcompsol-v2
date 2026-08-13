@@ -46,17 +46,37 @@
  *   last slide of a non-looping carousel is a no-op, so the timer would keep
  *   firing against a dead end.
  */
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 import { useCarousel } from "@/components/ui/carousel";
 
 export function CarouselAutoplay({
   /** Milliseconds between advances. Must exceed the reading time of one item. */
   interval,
+  paused = false,
 }: {
   interval: number;
+  /**
+   * A FIFTH pause condition, supplied by the caller: the testimonials carousel
+   * sets this while a quote is expanded. Someone who tapped "Read more" is
+   * mid-sentence, and the hover/focus conditions do not catch a touch reader
+   * who is neither hovering nor focused inside the carousel.
+   */
+  paused?: boolean;
 }) {
   const { api } = useCarousel();
+
+  // A ref, so the tick reads the CURRENT value without `paused` entering the
+  // effect's deps. In the deps it would tear down and rebuild the interval on
+  // every toggle, and a fresh interval restarts the countdown — expanding a
+  // quote would silently grant a full extra period after collapsing it.
+  const pausedRef = useRef(paused);
+  // Synced in an effect rather than written during render. A 6s interval makes
+  // the one-frame lag irrelevant, and writing a ref mid-render is exactly what
+  // breaks under concurrent rendering.
+  useEffect(() => {
+    pausedRef.current = paused;
+  }, [paused]);
 
   useEffect(() => {
     if (!api) return;
@@ -70,6 +90,9 @@ export function CarouselAutoplay({
     let onScreen = true;
 
     const tick = () => {
+      // The explicit pause controls win over every other condition.
+      if (pausedRef.current) return;
+      if (root.dataset.autoplayPaused === "true") return;
       if (hovered || focused || dragging || !onScreen) return;
       if (document.hidden || reduced.matches) return;
       api.scrollNext();

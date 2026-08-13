@@ -42,7 +42,7 @@ export function ValueCard({
     <Card
       className={cn(
         "relative h-full gap-0 overflow-hidden rounded-2xl border-border p-8",
-        "shadow-[0_8px_32px_rgb(var(--shadow-tint)/0.08)] transition-all duration-300",
+        "shadow-[0_8px_32px_rgb(var(--shadow-tint)/0.08)] transition-[transform,box-shadow] duration-300",
         "hover:-translate-y-2 hover:shadow-[0_16px_48px_rgb(var(--shadow-tint)/0.14)]",
         featured
           ? "border-transparent bg-gradient-to-br from-brand-dark to-brand-navy"
@@ -95,12 +95,14 @@ export function JobCard({
     // "Apply now" out of line with the others. The flex-1 on the description
     // below can only push the button to the bottom of a card that has a
     // bottom to be pushed to.
-    <Card className="flex h-full flex-col gap-0 rounded-2xl border-border p-6 transition-all duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-[0_12px_32px_rgb(var(--shadow-tint)/0.12)]">
+    <Card className="flex h-full flex-col gap-0 rounded-2xl border-border p-6 transition-[transform,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-[0_12px_32px_rgb(var(--shadow-tint)/0.12)]">
       <CardContent className="flex flex-1 flex-col p-0">
         <h3 className="text-xl font-semibold text-ink">{title}</h3>
         <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-ink-soft">
           <span className="rounded-full bg-secondary px-3 py-1">{team}</span>
-          <span className="rounded-full bg-secondary px-3 py-1">{location}</span>
+          <span className="rounded-full bg-secondary px-3 py-1">
+            {location}
+          </span>
         </div>
         <p className="mt-4 flex-1 text-sm leading-relaxed text-ink-muted">
           {description}
@@ -113,7 +115,10 @@ export function JobCard({
         >
           {/* mailto rather than an onClick that console.logs, which is what the
               original did — the button looked live and did nothing. */}
-          <a href={`mailto:careers@arcompsol.com?subject=Application: ${title}`}>
+          <a
+            href={`mailto:careers@arcompsol.com?subject=Application: ${title}`}
+            className="rounded-lg focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none"
+          >
             Apply now
           </a>
         </Button>

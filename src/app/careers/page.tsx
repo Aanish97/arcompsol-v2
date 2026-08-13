@@ -103,9 +103,16 @@ export default async function CareersPage({
 
       <Benefits />
 
-      <Section id="openings" width="wide" align="start" className="scroll-mt-20 bg-surface-alt">
+      <Section
+        id="openings"
+        width="wide"
+        align="start"
+        className="scroll-mt-20 bg-surface-alt"
+      >
         <Reveal className="flex w-full flex-col items-start">
-          <SectionHeading align="start">{OPENINGS_SECTION.title}</SectionHeading>
+          <SectionHeading align="start">
+            {OPENINGS_SECTION.title}
+          </SectionHeading>
           <SectionDescription align="start" className="mt-4">
             {OPENINGS_SECTION.subtitle}
           </SectionDescription>

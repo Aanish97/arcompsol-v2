@@ -34,7 +34,6 @@ import { Reveal } from "@/components/common/reveal";
 import {
   Section,
   SectionDescription,
-  SectionEyebrow,
   SectionHeading,
 } from "@/components/common/section";
 import { MILESTONES, MILESTONES_SECTION } from "@/content/home";
@@ -56,17 +55,10 @@ export function Milestones({
   const dark = tone === "dark";
 
   return (
-    <Section
-      width="wide"
-      className={dark ? "bg-brand-navy" : "bg-surface-alt"}
-    >
+    <Section width="wide" className={dark ? "bg-brand-navy" : "bg-surface-alt"}>
       <Reveal className="flex flex-col items-center">
-        {/* On navy the deep-forest --brand measures 2.20:1 and fails outright,
-            so the accent switches to its on-dark twin. Same reason the footer
-            eyebrows use it. */}
-        <SectionEyebrow className={dark ? "text-brand-on-dark" : undefined}>
-          Our process
-        </SectionEyebrow>
+        {/* NO EYEBROW. It read "Our process" above a heading that reads
+            "How We Work?" — the label restated the headline. */}
         <SectionHeading className={dark ? "text-white" : undefined}>
           {MILESTONES_SECTION.title}
         </SectionHeading>
@@ -148,9 +140,20 @@ export function Milestones({
                     isRight ? "md:mr-auto" : "md:ml-auto md:rotate-180",
                   )}
                 />
+                {/* HIDDEN BELOW md, shown from md up. The six headings ARE the
+                    process — Planning, Design, Development, Testing,
+                    Documentation, Maintenance — and they read as a sequence
+                    without elaboration. The descriptions run 15-33 words each;
+                    on a phone that is six paragraphs of supporting copy for a
+                    section nobody arrives to read, and it cost 2.1 screens.
+
+                    `hidden`, not removed: the copy stays in the HTML, so a
+                    crawler and reader mode still get the full process. It is
+                    also not truncated — a sentence cut mid-thought reads as a
+                    bug, whereas a heading alone reads as a summary. */}
                 <p
                   className={cn(
-                    "measure mt-3",
+                    "measure mt-3 hidden md:block",
                     dark && "text-white/60",
                     isRight ? "md:mr-auto" : "md:ml-auto",
                   )}

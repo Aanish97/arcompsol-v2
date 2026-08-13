@@ -65,14 +65,27 @@ const openSans = Open_Sans({
   display: "swap",
 });
 
+/**
+ * One sentence, three tags: the meta description, og:description and
+ * twitter:description. It was written out three times, and every copy still
+ * carried the old filler after the hero had been rewritten — which is exactly
+ * how a stale claim survives an edit. Declared once so the search snippet and
+ * the share card cannot disagree.
+ *
+ * This is the sentence Google prints under the result and the one that sits
+ * beneath every pasted link, so it claims only what the testimonials say:
+ * shipped on time, and reachable while it happens.
+ */
+const SITE_DESCRIPTION =
+  "We ship scalable software on time, and stay reachable while we do it.";
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://arcompsol.com"),
   title: {
     default: "Arcompsol",
     template: "%s | Arcompsol",
   },
-  description:
-    "We help brands make better decisions by delivering world-class, scalable solutions that drive growth and success.",
+  description: SITE_DESCRIPTION,
   icons: {
     icon: [
       { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
@@ -98,14 +111,12 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://arcompsol.com",
     title: "Arcompsol",
-    description:
-      "We help brands make better decisions by delivering world-class, scalable solutions that drive growth and success.",
+    description: SITE_DESCRIPTION,
   },
   twitter: {
     card: "summary_large_image",
     title: "Arcompsol",
-    description:
-      "We help brands make better decisions by delivering world-class, scalable solutions that drive growth and success.",
+    description: SITE_DESCRIPTION,
   },
 };
 
@@ -145,7 +156,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Skip to content
         </a>
         <SiteHeader />
-        <main id="main" className="flex-1">
+        {/* scroll-mt-20: the skip link jumps here, and a keyboard user landing
+            with the top of main tucked under the sticky header is the exact
+            failure the skip link exists to prevent. */}
+        <main id="main" className="flex-1 scroll-mt-20">
           {children}
         </main>
         <SiteFooter />

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * A service tile that flips on click to show what the service actually is.
+ * A service tile that flips to show what the service actually is.
  *
  * ── IN SIMPLE WORDS ──
  * Front is the icon and the name. Click it and the card turns over to show a
@@ -52,10 +52,22 @@
  * stand on its own, and the description has to be an addition rather than the
  * point. Do not move essential information to the back.
  *
+ * HOVER on a mouse, TAP on a touch screen, FOCUS on a keyboard — all three set
+ * the same `flipped` state. Routing every input through one piece of state is
+ * what makes hover safe here: a naive CSS `:hover` flip leaves the description
+ * unreachable on a phone, so hover is gated on `(hover: hover) and
+ * (pointer: fine)` and touch keeps the tap.
+ *
+ * That single state is also why `aria-expanded` stays honest. If CSS read
+ * `:hover` directly, the card would look open while telling a screen reader it
+ * was closed.
+ *
  * ── DO NOT ──
- * - Do not go back to flipping on hover. A phone has no hover: the description
- *   became unreachable there, which is why the previous version needed a
- *   separate (hover: none) branch in globals.css just to stay usable.
+ * - Do not implement the hover in CSS with `.flip:hover`. It would desync
+ *   `aria-expanded` and would also fire on a touch tap, fighting the click
+ *   handler.
+ * - Do not let click toggle on hover-capable devices; the pointer handlers
+ *   already own the state there.
  * - Do not swap the root <button> for a div. It is the element type, not a
  *   visible button — it is what makes Enter and Space work, puts the card in
  *   the tab order, and gets it announced as a control. A div needs tabIndex,
@@ -64,7 +76,7 @@
  *   viewer; the ring belongs on the container that stays put.
  */
 import Image, { type StaticImageData } from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -99,21 +111,74 @@ export function ServiceCard({
 }) {
   const [flipped, setFlipped] = useState(false);
 
+  /**
+   * Whether this device has a real hover state. Read in the handlers, never
+   * during render, and set after mount so the server and client agree on the
+   * first paint.
+   */
+  const canHover = useRef(false);
+
+  /**
+   * Whether the flip exists at all. Below lg the card shows both title and
+   * description in normal flow, so there is nothing to flip and nothing to
+   * expand — the handlers must not fire and `aria-expanded` must not be
+   * announced, or the card claims a state it does not have.
+   *
+   * State, not a ref, because it gates rendered output. It starts false so the
+   * server and the first client paint agree, then a listener keeps it correct
+   * across resize and orientation change.
+   */
+  const [canFlip, setCanFlip] = useState(false);
+  useEffect(() => {
+    canHover.current = window.matchMedia(
+      "(hover: hover) and (pointer: fine)",
+    ).matches;
+    const lg = window.matchMedia("(min-width: 64rem)");
+    const sync = () => setCanFlip(lg.matches);
+    sync();
+    lg.addEventListener("change", sync);
+    return () => lg.removeEventListener("change", sync);
+  }, []);
+
   return (
     <button
       type="button"
-      onClick={() => setFlipped((current) => !current)}
-      aria-expanded={flipped}
+      onPointerEnter={() => canFlip && canHover.current && setFlipped(true)}
+      onPointerLeave={() => canFlip && canHover.current && setFlipped(false)}
+      // Only where hover does not exist. On a mouse the pointer handlers own
+      // the state, and letting a click toggle it too leaves the card stuck
+      // showing its back after the cursor moves away.
+      onClick={() => {
+        if (canFlip && !canHover.current) setFlipped((current) => !current);
+      }}
+      // :focus-visible, not plain focus — a mouse click also focuses the
+      // button, and reacting to that would fight the pointer handlers.
+      onFocus={(event) => {
+        if (canFlip && event.currentTarget.matches(":focus-visible"))
+          setFlipped(true);
+      }}
+      onBlur={() => setFlipped(false)}
+      aria-expanded={canFlip ? flipped : undefined}
       data-flipped={flipped}
       className={cn(
-        "flip group h-full min-h-76 w-full cursor-pointer rounded-2xl text-left",
+        "flip group h-full w-full rounded-2xl text-left lg:min-h-76 lg:cursor-pointer",
         "transition-transform duration-300 hover:-translate-y-2",
         "focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none",
       )}
     >
       <div className="flip-inner">
-        <Card aria-hidden className={cn("flip-face flip-front items-center py-8", FACE)}>
-          <CardContent className="flex h-full flex-col items-center justify-center gap-6 px-6">
+        {/* aria-hidden ONLY at lg, where the back face carries the same title
+            and the real description. Below lg this is the only copy of the
+            content and hiding it would empty the card for a screen reader. */}
+        <Card
+          aria-hidden={canFlip || undefined}
+          className={cn("flip-face flip-front items-center py-5 lg:py-8", FACE)}
+        >
+          {/* A ROW on a phone, the centred column at lg. Stacked and centred, the
+              front face costs 324px per card — a 96px icon, py-8 and gap-6 —
+              which is 2.3 screens for six services. As a row with a 48px icon
+              it reads as a list item and costs about a third of that. */}
+          <CardContent className="flex h-full flex-row items-start gap-4 px-5 lg:flex-col lg:items-center lg:justify-center lg:gap-6 lg:px-6">
             {/* `fill` inside a fixed box, NOT width={60} height={60}. These six
                 source images range from 0.90 to 1.87 in aspect ratio, so
                 declaring a square is a lie about five of them: Tailwind's
@@ -121,22 +186,35 @@ export function ServiceCard({
                 from the stated width, which is exactly the "width or height
                 modified, but not the other" warning. With `fill` the intrinsic
                 size is irrelevant and object-contain letterboxes each icon. */}
-            <div className="relative size-24">
+            <div className="relative size-12 shrink-0 lg:size-24">
               <Image
                 src={image}
                 alt=""
                 fill
-                sizes="96px"
+                sizes="(max-width: 1024px) 48px, 96px"
                 className="object-contain"
               />
             </div>
-            <p className="text-center text-lg leading-snug font-medium text-ink">
-              {title}
-            </p>
+            <div className="flex flex-col gap-1.5 lg:items-center lg:gap-0">
+              <p className="text-base leading-snug font-medium text-ink lg:text-center lg:text-lg">
+                {title}
+              </p>
+              {/* Below lg this IS the content — there is no back face to tap
+                through to, so the description is simply shown. Hidden at lg,
+                where the flip owns it. */}
+              <p className="text-sm leading-relaxed text-ink-muted lg:hidden">
+                {description}
+              </p>
+            </div>
           </CardContent>
         </Card>
 
-        <Card className={cn("flip-face flip-back items-start py-6", FACE)}>
+        <Card
+          className={cn(
+            "hidden flip-face flip-back items-start py-6 lg:flex",
+            FACE,
+          )}
+        >
           <CardContent className="flex h-full flex-col justify-center gap-3 px-6">
             <div className="relative size-10 shrink-0">
               <Image

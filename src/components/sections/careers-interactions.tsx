@@ -29,14 +29,11 @@
  */
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { scrollToId } from "@/lib/scroll-to";
 
 // ScrollToButton lives in common/scroll-to-button.tsx. The home hero needs one
 // too, and importing a component from a file called "careers-interactions"
 // would misstate where it belongs.
-
-function scrollToId(id: string) {
-  document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-}
 
 export function VisionScroll({ hasVision }: { hasVision: boolean }) {
   const router = useRouter();

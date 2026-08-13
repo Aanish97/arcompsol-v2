@@ -15,6 +15,7 @@ import devOps from "../../public/images/devops.png";
 import mobileDevelopment from "../../public/images/mobile-development.png";
 import uiUxDesign from "../../public/images/ui-ux-design.png";
 import webDevelopment from "../../public/images/web-development.png";
+import { CONTACT_CTA } from "@/content/site";
 
 /**
  * The hero.
@@ -33,13 +34,21 @@ import webDevelopment from "../../public/images/web-development.png";
  * footer, #services below). Neither is a placeholder, because a hero button
  * that goes nowhere is worse than no hero button at all — and until now there
  * was no hero button at all.
+ *
+ * The description carried "world-class ... solutions that drive growth and
+ * success" — four filler words in the single most-read sentence on the site,
+ * and 27 words where a hero subhead wants 20. The replacement claims only what
+ * the testimonials already say out loud: on time, and reachable while it
+ * happens. Do not put an unfalsifiable adjective back in here.
+ *
+ * primaryCta is imported, not written. See CONTACT_CTA in content/site.ts.
  */
 export const HOME_HERO = {
   label: "Software studio",
   heading: "Power Your Business with Innovation",
   description:
-    "Building products, services and everything in between. We help brands make better decisions by delivering world-class, scalable solutions that drive growth and success.",
-  primaryCta: "Let’s talk",
+    "Building products, services and everything in between. We ship scalable software on time, and stay reachable while we do it.",
+  primaryCta: CONTACT_CTA,
   secondaryCta: "See what we do",
 };
 

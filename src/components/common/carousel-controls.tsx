@@ -24,12 +24,27 @@
  * benefits carousel shows three per view, so six items are four snap positions,
  * not six. Counting children would render two dots that go nowhere.
  *
+ * THE PAUSE BUTTON is rendered when `pausable` is set. NO CALLER CURRENTLY
+ * SETS IT — both carousels dropped it by owner decision on 2026-08-12, so this
+ * branch is dormant rather than dead, kept as the one-word way back.
+ *
+ * It is a WCAG 2.2.2 requirement, not a nicety: content that advances on its
+ * own for more than five seconds needs a control that stops it, and
+ * pause-on-hover does not count — it cannot be reached from a keyboard or
+ * announced to a screen reader. Both carousels autoplay at 6s and therefore
+ * currently fail that criterion; see the comments at their call sites.
+ *
+ * It writes `data-autoplay-paused` onto the carousel root rather than lifting
+ * state, because the timer lives in a sibling component. See carousel-autoplay.
+ *
+ * If autoplay is ever removed, remove this control in the same change.
+ *
  * ── DO NOT ──
  * - Do not drop the `api.off` cleanup. Reveal-heavy pages mount and unmount
  *   these; leaked listeners fire on a disposed component and set state after
  *   unmount.
  */
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, Pause, Play } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -38,15 +53,28 @@ import { cn } from "@/lib/utils";
 
 export function CarouselControls({
   label,
+  pausable = false,
   className,
 }: {
   /** Names what is being paged, for screen readers: "testimonial", "benefit". */
   label: string;
+  /** Set wherever a CarouselAutoplay is rendered. Required for WCAG 2.2.2. */
+  pausable?: boolean;
   className?: string;
 }) {
   const { api, scrollPrev, scrollNext } = useCarousel();
   const [selected, setSelected] = useState(0);
   const [snapCount, setSnapCount] = useState(0);
+  const [paused, setPaused] = useState(false);
+
+  const togglePaused = useCallback(() => {
+    if (!api) return;
+    setPaused((wasPaused) => {
+      const next = !wasPaused;
+      api.rootNode().dataset.autoplayPaused = String(next);
+      return next;
+    });
+  }, [api]);
 
   const sync = useCallback(() => {
     if (!api) return;
@@ -68,7 +96,13 @@ export function CarouselControls({
   return (
     <div
       className={cn(
-        "mt-8 flex w-full items-center justify-between gap-6",
+        // WRAPS. Once the pause button joined prev/next there were three 44px
+        // targets plus up to six 44px dots, and at 390px that row needed 392px
+        // inside 342px of content width — 26px of horizontal page scroll on a
+        // phone. flex-wrap drops the button group onto its own line instead of
+        // pushing the document wider. Re-measure at 390px before adding a
+        // fourth control; this row has no slack left.
+        "mt-8 flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-4",
         className,
       )}
     >
@@ -92,7 +126,7 @@ export function CarouselControls({
             <span
               aria-hidden
               className={cn(
-                "block h-1.5 rounded-full transition-all duration-300",
+                "block h-1.5 rounded-full transition-[width,background-color] duration-300",
                 index === selected
                   ? "w-8 bg-gradient-to-r from-brand to-brand-deep"
                   : "w-1.5 bg-ink/20 group-hover/dot:bg-ink/40",
@@ -103,6 +137,23 @@ export function CarouselControls({
       </div>
 
       <div className="flex items-center gap-2">
+        {pausable && (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-lg"
+            onClick={togglePaused}
+            aria-label={paused ? `Play ${label}s` : `Pause ${label}s`}
+            aria-pressed={paused}
+            className="size-11 rounded-full"
+          >
+            {paused ? (
+              <Play className="size-4" />
+            ) : (
+              <Pause className="size-4" />
+            )}
+          </Button>
+        )}
         <Button
           type="button"
           variant="outline"

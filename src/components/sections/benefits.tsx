@@ -29,10 +29,7 @@
 import { CarouselAutoplay } from "@/components/common/carousel-autoplay";
 import { CarouselControls } from "@/components/common/carousel-controls";
 import { Reveal } from "@/components/common/reveal";
-import {
-  Section,
-  SectionHeading,
-} from "@/components/common/section";
+import { Section, SectionHeading } from "@/components/common/section";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Carousel,
@@ -60,10 +57,19 @@ export function Benefits() {
                   {/* Short rule instead of an icon or a number. It marks where
                       each card starts without claiming an order the content
                       does not have, and it picks up the brand green that
-                      otherwise appears only in the eyebrow. */}
+                      otherwise appears only in the eyebrow.
+
+                      GROWS BY TRANSFORM, not width. It was `transition-all`
+                      with `group-hover:w-14`, which animates a LAYOUT property:
+                      every hover frame re-ran layout for the card. scaleX(1.75)
+                      from a left origin is the identical 32px -> 56px result on
+                      the compositor. Safe on this element specifically because
+                      it is 2px tall — the 1px corner radius stretches to 1.75px
+                      horizontally, which is not perceptible. Do not copy the
+                      scale trick onto a tall element with a visible radius. */}
                   <span
                     aria-hidden
-                    className="mb-5 h-0.5 w-8 rounded-full bg-gradient-to-r from-brand to-brand-deep transition-all duration-300 group-hover:w-14"
+                    className="mb-5 h-0.5 w-8 origin-left rounded-full bg-gradient-to-r from-brand to-brand-deep transition-transform duration-300 group-hover:scale-x-175"
                   />
                   <h3 className="text-ink">{item.benefit.trim()}</h3>
                   <div className="mt-3 space-y-2 text-sm leading-relaxed text-ink-muted">
@@ -80,12 +86,13 @@ export function Benefits() {
             </CarouselItem>
           ))}
         </CarouselContent>
-
-        {/* 4.5s, matching the testimonials. It sits far better here: three
-            cards are visible at once, so an advance replaces one and leaves
-            the two you were reading in place, and the longest benefit is 43
-            words against a testimonial's 80. */}
-        <CarouselAutoplay interval={4500} />
+        <CarouselAutoplay interval={6000} />
+        {/* No `pausable`: the play/pause button is removed by owner decision
+            (2026-08-12), matching the testimonials carousel. Autoplay still
+            stops on hover, focus, drag, off-screen, hidden tab, and under
+            prefers-reduced-motion — see carousel-autoplay.tsx. This leaves no
+            explicit pause control for a 6s auto-advance, which is what WCAG
+            2.2.2 asks for. Restore `pausable` to put it back. */}
         <CarouselControls label="benefit" />
       </Carousel>
     </Section>

@@ -36,12 +36,25 @@ export type NavItem = {
   homeOnly?: boolean;
 };
 
+/**
+ * The one label for the one contact action, used by the header button and the
+ * hero's primary CTA alike.
+ *
+ * Exported rather than repeated so the header and the hero cannot diverge —
+ * they once carried different capitalisation AND different apostrophe
+ * characters for the same button. content/home.ts imports this.
+ *
+ * U+2019 is the correct apostrophe for an English contraction. Sentence case,
+ * because every other control on the site is sentence case.
+ */
+export const CONTACT_CTA = "Let’s talk";
+
 export const NAV_ITEMS: NavItem[] = [
   { label: "Home", href: ROUTES.HOME },
   { label: "Services", href: ROUTES.SERVICES, homeOnly: true },
   { label: "Careers", href: ROUTES.CAREERS },
   { label: "About", href: ROUTES.ABOUT },
-  { label: "Let's Talk", href: ROUTES.LETS_TALK, highlight: true },
+  { label: CONTACT_CTA, href: ROUTES.LETS_TALK, highlight: true },
 ];
 
 export type FooterLink = { label: string; href: string | null };
@@ -79,18 +92,37 @@ export const SOCIAL_LINKS = [
   },
 ];
 
+/**
+ * The one email and phone number, referenced rather than retyped.
+ *
+ * The footer, the mobile nav panel and the contact form's failure message all
+ * print these. They were literals in three files, which is how a changed
+ * address ends up updated in one place and stale in the others — the address
+ * moved from arcompsol@gmail.com to aanish@arcompsol.com on 2026-08-12 and the
+ * form's error toast still carried the old one.
+ */
+export const CONTACT = {
+  email: "aanish@arcompsol.com",
+  phone: "+92 300 9442848",
+} as const;
+
 export const FOOTER_LOCATIONS = [
   {
-    location: "UNITED STATES",
-    // Was "Comming Soon!" — a misspelling sitting in the footer of every page.
+    // Sentence case in the DATA, not via CSS — styling an all-caps string as
+    // normal text leaves it shouting.
+    location: "United States",
     address: "Coming soon",
-    email: "arcompsol@gmail.com",
+    email: CONTACT.email,
   },
   {
-    location: "PAKISTAN",
-    address: "305 GT road, Near Shalimar Garden, Cantt, Lahore",
-    phone: "+92 300 9442848",
+    location: "Pakistan",
+    // The only place the office address is written; there is no structured
+    // data or metadata copy of it to keep in sync.
+    // No trailing ", Pakistan" — the `location` field directly above already
+    // reads "Pakistan" and renders 40px higher in the same block.
+    address: "156-H Commercial Area, Sector Y DHA Phase 3, Lahore",
+    phone: CONTACT.phone,
     phone2: "+92 320 4487749",
-    email: "arcompsol@gmail.com",
+    email: CONTACT.email,
   },
 ];

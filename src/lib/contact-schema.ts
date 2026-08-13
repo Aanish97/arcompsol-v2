@@ -49,7 +49,10 @@ export const contactSchema = z.object({
   mobile: z
     .string()
     .min(1, "Mobile number is required")
-    .refine(isValidPhoneNumber, "Please enter a valid phone number with country code"),
+    .refine(
+      isValidPhoneNumber,
+      "Please enter a valid phone number with country code",
+    ),
   subject: z.string().trim().min(1, "Subject is required").max(200),
   body: z.string().trim().min(1, "Message is required").max(5000),
 });

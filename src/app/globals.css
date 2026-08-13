@@ -93,7 +93,10 @@
   --chart-3: oklch(0.439 0 0);
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
+  /* --radius lives in the Arcompsol block below at 0.75rem. The scaffold's
+     0.625rem was declared here and silently overridden by it — same :root,
+     later wins — so every radius on the site was 20% larger than this line
+     claimed. Removed rather than left to mislead the next reader. */
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
   --sidebar-primary: oklch(0.205 0 0);
@@ -119,25 +122,25 @@
 
      Every pairing is measured. Worst case on the page is ink-muted on
      --secondary at 5.63:1; AA needs 4.5:1. */
-  --brand: #1F5F4B;            /* deep forest — buttons, eyebrows, focus ring */
+  --brand: #1f5f4b; /* deep forest — buttons, eyebrows, focus ring */
   /* The SAME accent cannot serve both grounds. --brand is deep forest so it
      reads on warm paper (7.19:1); on the dark footer panel that identical
      colour measures 2.20:1 and fails outright. This is the on-dark twin, and
      it is exactly the logo green — so the mark's colour returns to the
      interface in the one place it actually works. 6.10:1 on --brand-navy. */
-  --brand-on-dark: #38B089;
-  --brand-deep: #123A2E;       /* gradient end, pill hover */
-  --brand-blue: #2E7C63;       /* NAME IS HISTORICAL. Was #00BDFF cyan, the one
+  --brand-on-dark: #38b089;
+  --brand-deep: #123a2e; /* gradient end, pill hover */
+  --brand-blue: #2e7c63; /* NAME IS HISTORICAL. Was #00BDFF cyan, the one
                                   cool note left in a warm palette. Now a lighter
                                   forest so the outline button and the hero glow
                                   stay on-palette. Rename when convenient. */
-  --brand-dark: #1E2B24;       /* headings — was #1D2740 blueWhale (cool) */
-  --brand-navy: #16211C;       /* footer panel — was #011334 prussian (cool) */
+  --brand-dark: #1e2b24; /* headings — was #1D2740 blueWhale (cool) */
+  --brand-navy: #16211c; /* footer panel — was #011334 prussian (cool) */
 
-  --ink: #15171B;              /* 17.19:1 on --surface */
-  --ink-soft: #3C4149;         /*  9.84:1 */
-  --ink-muted: #5A5751;        /*  6.90:1 on surface, 5.63:1 on secondary */
-  --ink-faint: #B3ADA1;        /* footer/muted copy */
+  --ink: #15171b; /* 17.19:1 on --surface */
+  --ink-soft: #3c4149; /*  9.84:1 */
+  --ink-muted: #5a5751; /*  6.90:1 on surface, 5.63:1 on secondary */
+  --ink-faint: #b3ada1; /* footer/muted copy */
 
   /* ── Surfaces ─────────────────────────────────────────────────────────
      These carry a slight BRAND TINT rather than being neutral grey, and they
@@ -150,23 +153,23 @@
 
      They now span 7.9 points and are warm rather than neutral. Ink holds
      17.19:1 on --surface and the worst pairing anywhere is 5.63:1. */
-  --surface: #FBFAF7;          /* L*  98.3  warm paper, not pure white */
-  --surface-alt: #F3F0EA;      /* L*  94.9  backgroundSecondary */
+  --surface: #fbfaf7; /* L*  98.3  warm paper, not pure white */
+  --surface-alt: #f3f0ea; /* L*  94.9  backgroundSecondary */
 
   /* shadcn semantics re-pointed at the brand. Overriding HERE rather than
      per-component is why a plain <Button> or <Card> is already on-brand —
      change a line below and every shadcn primitive follows. */
   --foreground: var(--ink);
   --primary: var(--brand-dark);
-  --primary-foreground: #FBFAF7;
-  --secondary: #E8E3DA;        /* L*  90.4 */
+  --primary-foreground: #fbfaf7;
+  --secondary: #e8e3da; /* L*  90.4 */
   --secondary-foreground: var(--ink);
-  --muted: #E8E3DA;
+  --muted: #e8e3da;
   --muted-foreground: var(--ink-soft);
-  --accent: #E8E3DA;
+  --accent: #e8e3da;
   --accent-foreground: var(--ink);
-  --border: #DDD7CC;           /* L*  86.2 */
-  --input: #CFC7B8;            /* L*  80.5 */
+  --border: #ddd7cc; /* L*  86.2 */
+  --input: #cfc7b8; /* L*  80.5 */
   /* The focus ring follows the PRIMARY brand, not the secondary one. This was
      --brand-blue (#00BDFF), carried over from the MUI theme's focus outline, so
      tabbing through the site lit every control in cyan while every other
@@ -179,6 +182,8 @@
   --ring: var(--brand);
   --card: var(--surface);
   --card-foreground: var(--ink);
+  /* THE radius base. Everything is a multiple: md 9.6, lg 12, xl 16.8,
+     2xl 21.6, 3xl 26.4. Nothing on the site should use an arbitrary radius. */
   --radius: 0.75rem;
 
   /* ── Shadow hues ──────────────────────────────────────────────────────
@@ -193,8 +198,8 @@
      These MUST track the palette. Left at the old prussian/bright-green
      values they were the last cool note on a warm page, and a cool shadow
      under a warm surface reads as dirt rather than as depth. */
-  --shadow-tint: 22 33 28;     /* --brand-navy #16211C */
-  --shadow-brand: 31 95 75;    /* --brand      #1F5F4B */
+  --shadow-tint: 22 33 28; /* --brand-navy #16211C */
+  --shadow-brand: 31 95 75; /* --brand      #1F5F4B */
 }
 
 /* There is deliberately NO `.dark { ... }` rule.
@@ -219,7 +224,18 @@
     @apply bg-background text-foreground;
   }
   html {
-    @apply font-sans scroll-smooth;
+    @apply font-sans;
+  }
+
+  /* Smooth scrolling is MOTION, and it was the only motion on the site not
+     gated on this query. A jump to #contact-form animates ~4000px of travel,
+     which is exactly the sweep that triggers vestibular symptoms — the reason
+     the setting exists. Reduced-motion users now get an instant jump, which
+     lands in the same place and loses nothing but the animation. */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      @apply scroll-smooth;
+    }
   }
 
   /* ── Type scale ──────────────────────────────────────────────────────
@@ -258,9 +274,6 @@
   .measure {
     max-width: 65ch;
   }
-  .measure-tight {
-    max-width: 46ch;
-  }
 }
 
 /* ── Scroll reveal ────────────────────────────────────────────────────────
@@ -285,6 +298,55 @@
     opacity: 1;
     transform: none;
   }
+
+  /* ── Staggered heading reveal ────────────────────────────────────────────
+     Words arrive left to right once their section is reached, driven by the
+     SAME [data-reveal] flag the block above uses — one observer per section,
+     not one per word. 45ms a word, so an eight-word heading finishes 315ms
+     after it starts. The 8px rise and easing match the block reveal so the two
+     read as one arrival rather than two effects.
+
+     inline-block is required for the transform; the space between words is a
+     separate text node (see stagger-text.tsx). */
+  [data-reveal] .stagger-word {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+      opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+      transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+    transition-delay: calc(var(--word, 0) * 45ms);
+  }
+
+  [data-reveal="shown"] .stagger-word {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* ── Hero stagger: RISE ONLY, never a fade ───────────────────────────────
+     The hero is on screen at first paint, so it cannot wait for an observer,
+     and it must never be invisible. Opacity stays at 1 for the whole animation
+     — only the transform moves. The words are therefore legible from the first
+     frame even if the animation is delayed, throttled in a background tab, or
+     never runs at all.
+
+     Faster than the scroll variant too: this is the first thing anyone sees, so
+     every millisecond it spends is a millisecond the page looks unfinished. The
+     last word lands at 340ms. */
+  @keyframes stagger-rise {
+    from {
+      transform: translateY(6px);
+    }
+    to {
+      transform: none;
+    }
+  }
+
+  [data-stagger="load"] .stagger-word {
+    display: inline-block;
+    animation: stagger-rise 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation-delay: calc(var(--word, 0) * 20ms);
+  }
 }
 
 @layer utilities {
@@ -292,8 +354,16 @@
      than an image: no request, no layout cost, and it scales to any viewport. */
   .bg-hero-glow {
     background:
-      radial-gradient(60% 50% at 50% 0%, color-mix(in oklab, var(--brand) 14%, transparent) 0%, transparent 70%),
-      radial-gradient(40% 40% at 85% 30%, color-mix(in oklab, var(--brand-blue) 10%, transparent) 0%, transparent 70%),
+      radial-gradient(
+        60% 50% at 50% 0%,
+        color-mix(in oklab, var(--brand) 14%, transparent) 0%,
+        transparent 70%
+      ),
+      radial-gradient(
+        40% 40% at 85% 30%,
+        color-mix(in oklab, var(--brand-blue) 10%, transparent) 0%,
+        transparent 70%
+      ),
       var(--surface);
   }
 
@@ -374,27 +444,6 @@
     transition-duration: 320ms;
   }
 
-  /* Authored at final diameter and scaled DOWN by the animation — see
-     hero-gradient.tsx. Opacity is driven by keyframes; the tint strength lives
-     here so it stays in the token system. */
-  .hero-light-ripple {
-    position: absolute;
-    top: 0;
-    left: 0;
-    margin: -450px 0 0 -450px;
-    height: 900px;
-    width: 900px;
-    border-radius: 50%;
-    background: radial-gradient(
-      closest-side,
-      color-mix(in oklab, var(--brand) 20%, transparent),
-      color-mix(in oklab, var(--brand) 7%, transparent) 55%,
-      transparent 76%
-    );
-    opacity: 0;
-    will-change: transform, opacity;
-  }
-
   /* The script already bails before writing any of the custom properties, so
      this is belt and braces — it also covers the case where the setting is
      turned on after the listeners are attached. */
@@ -404,20 +453,13 @@
       transform: none !important;
       transition: none;
     }
-    .hero-light-ripple {
-      display: none;
-    }
   }
 
-  /* Faint grid, used behind tinted bands to stop large flat areas reading as
-     empty. Masked so it fades out before it reaches the section edges. */
-  .bg-grid {
-    background-image:
-      linear-gradient(to right, color-mix(in oklab, var(--ink) 4%, transparent) 1px, transparent 1px),
-      linear-gradient(to bottom, color-mix(in oklab, var(--ink) 4%, transparent) 1px, transparent 1px);
-    background-size: 48px 48px;
-    mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 40%, transparent 100%);
-  }
+  /* No decorative grid utility here, deliberately. A two-axis hairline lattice
+     tiled at a fixed cell is a generated-UI signature, and a grid overlay is
+     only earned where the grid means something — a canvas, a map, a blueprint,
+     a ruler. If a band reads as empty the fix is content or a tint, never a
+     lattice. */
 }
 
 @layer base {
@@ -457,8 +499,7 @@
 }
 
 @layer components {
-
-    /* ── Flip card ────────────────────────────────────────────────────────
+  /* ── Flip card ────────────────────────────────────────────────────────
      Two faces stacked in 3D space; the container rotates 180° and
      backface-visibility decides which one you see.
 
@@ -467,23 +508,6 @@
      alike: a phone has no hover, so a hover-driven version needed a whole
      separate (hover: none) branch here just to keep the description
      reachable. A click works everywhere, so that branch is gone.           */
-  .flip {
-    perspective: 1200px;
-  }
-
-  /* ── Hero 3D ──────────────────────────────────────────────────────────
-     Real 3D space, not a fake shear. `perspective` on the container puts a
-     camera in front of the scene; `preserve-3d` on the stage stops the
-     browser flattening its children into the parent's plane, which is the
-     one property people leave out and then wonder why translateZ does
-     nothing.
-
-     The glow sits at -90px and the art at +40px, so they sweep through
-     different arcs as the stage rotates. That parallax is the depth cue.
-     Put them on the same plane and you have a picture on a hinge.
-
-     See hero-visual.tsx: --tilt-x / --tilt-y are written by the pointer
-     directly onto the node, so React never re-renders during the movement. */
   .tilt3d {
     perspective: 1100px;
     perspective-origin: 50% 50%;
@@ -498,9 +522,6 @@
     /* Slow easing back to rest, fast while tracking. One transition that
        suited both would either lag behind the cursor or snap on exit. */
     transition: transform 520ms cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .tilt3d[data-tracking="true"] .tilt3d-stage {
-    transition-duration: 90ms;
   }
 
   .tilt3d-art {
@@ -524,35 +545,74 @@
     filter: blur(38px);
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .tilt3d-stage {
-      transform: none !important;
-      transition: none;
-    }
+  .hero-light-ripple {
+    position: absolute;
+    top: 0;
+    left: 0;
+    margin: -450px 0 0 -450px;
+    height: 900px;
+    width: 900px;
+    border-radius: 50%;
+    background: radial-gradient(
+      closest-side,
+      color-mix(in oklab, var(--brand) 20%, transparent),
+      color-mix(in oklab, var(--brand) 7%, transparent) 55%,
+      transparent 76%
+    );
+    opacity: 0;
+    /* NO will-change here. It was permanent, on a 900x900 element that sits at
+       opacity 0 between clicks — a compositor layer held for something
+       invisible almost all of the time. hero-gradient.tsx sets it on
+       pointerdown and clears it when the ripple finishes, which is what the
+       hint is actually for. */
   }
 
+  .tilt3d[data-tracking="true"] .tilt3d-stage {
+    transition-duration: 90ms;
+  }
+
+  .flip {
+    perspective: 1200px;
+  }
+
+  /* BELOW lg THERE IS NO FLIP. Both faces sit in normal flow and the card sizes
+     to its content. A flip is a pointer affordance: on a phone it hides the
+     description behind a tap AND forces every card to the height of its tallest
+     face — six cards at 310px cost 2.2 screens to read six words. Flat, the
+     same six cost about a third of that and need no tap.
+
+     All the 3D machinery is therefore scoped to lg, which is also the only
+     place the hover that drives it exists. */
   .flip-inner {
     position: relative;
-    height: 100%;
-    transform-style: preserve-3d;
-    transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  /* Both faces are absolute, so the CONTAINER must carry a height — see the
-     min-h on ServiceCard. Without it the tiles collapse to nothing in a
-     single-column grid, where rows are sized by content. */
   .flip-face {
-    position: absolute;
-    inset: 0;
-    backface-visibility: hidden;
+    position: relative;
   }
 
-  .flip-back {
-    transform: rotateY(180deg);
-  }
+  @media (min-width: 64rem) {
+    .flip-inner {
+      height: 100%;
+      transform-style: preserve-3d;
+      transition: transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
 
-  .flip[data-flipped="true"] .flip-inner {
-    transform: rotateY(180deg);
+    /* Both faces are absolute here, so the CONTAINER must carry a height — see
+       lg:min-h-76 on ServiceCard. Without it the tiles collapse to nothing. */
+    .flip-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+    }
+
+    .flip-back {
+      transform: rotateY(180deg);
+    }
+
+    .flip[data-flipped="true"] .flip-inner {
+      transform: rotateY(180deg);
+    }
   }
 
   /* A 600ms 3D rotation is exactly the movement this setting exists to turn
@@ -585,12 +645,4 @@
   /* For any scrollable child that should hide its bar independently — a
      horizontal chip row, an overflowing table. The page-level rule above does
      not cascade to nested scroll containers. */
-  .scrollbar-hidden {
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-  .scrollbar-hidden::-webkit-scrollbar {
-    display: none;
-  }
 }
-

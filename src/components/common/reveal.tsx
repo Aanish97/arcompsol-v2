@@ -71,7 +71,11 @@ export function Reveal({
       // @ts-expect-error — one ref type covering div | li | section
       ref={ref}
       data-reveal={shown ? "shown" : ""}
-      style={delay ? ({ "--reveal-delay": `${delay}ms` } as React.CSSProperties) : undefined}
+      style={
+        delay
+          ? ({ "--reveal-delay": `${delay}ms` } as React.CSSProperties)
+          : undefined
+      }
       className={className}
     >
       {children}

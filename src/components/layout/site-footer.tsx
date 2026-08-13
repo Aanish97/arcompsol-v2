@@ -35,6 +35,8 @@
 import Link from "next/link";
 
 import { BrandLogo } from "@/components/common/brand-logo";
+import { Reveal } from "@/components/common/reveal";
+import { StaggerText } from "@/components/common/stagger-text";
 import { InstagramIcon, LinkedInIcon } from "@/components/common/social-icons";
 import { ContactFormLazy } from "@/components/layout/contact-form-lazy";
 import {
@@ -54,16 +56,22 @@ export function SiteFooter() {
       <div className="mx-auto w-full max-w-6xl px-6 py-16 md:px-8 md:py-20">
         <div className="grid gap-12 lg:grid-cols-2 lg:gap-14 xl:gap-20">
           <div className="flex flex-col">
-            <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-brand-on-dark uppercase">
-              Get in touch
-            </p>
-            <h2 className="mt-4 max-w-md text-white">
-              Love to hear from you, Get in touch!
-            </h2>
-            <p className="measure mt-4 text-white/60">
-              Tell us what you are building. We read every message and reply to
-              the ones we can help with.
-            </p>
+            {/* NO EYEBROW. It read "Get in touch" directly above a heading
+                that reads "Get in touch!" — the same three words twice, 4px
+                apart. It also appeared on every page, so it was the single
+                most-repeated eyebrow on the site. */}
+            {/* The only <Reveal> in the footer. It exists so this heading
+                staggers like the other three; scoped to the heading and its
+                lead line, leaving the addresses and the form un-animated. */}
+            <Reveal>
+              <h2 className="max-w-md text-white">
+                <StaggerText text="Love to hear from you, Get in touch!" />
+              </h2>
+              <p className="measure mt-4 text-white/60">
+                Tell us what you are building. We read every message and reply
+                to the ones we can help with.
+              </p>
+            </Reveal>
 
             {/* sm:2 → lg:1 → xl:2. Breakpoints are viewport-wide but this
                 grid lives in a column that NARROWS at lg when the footer
@@ -71,15 +79,19 @@ export function SiteFooter() {
                 exactly where the viewport looks widest. */}
             <div className="mt-10 grid gap-8 sm:grid-cols-2 lg:mt-12 lg:grid-cols-1 xl:grid-cols-2">
               {FOOTER_LOCATIONS.map((office) => (
-                <div key={office.location} className="flex flex-col gap-2">
-                  <p className="text-xs font-semibold tracking-[0.14em] text-white/80 uppercase">
+                <div key={office.location} className="flex flex-col gap-1">
+                  {/* Sentence case, NOT tracked caps. These name real places
+                      and are content, but styled as eyebrows they read as two
+                      more decorative labels in a footer that already had
+                      several. Same information, one less uppercase rhythm. */}
+                  <p className="text-sm font-semibold text-white/90">
                     {office.location}
                   </p>
                   <p className="text-sm text-white/55">{office.address}</p>
                   {office.phone && (
                     <a
                       href={`tel:${office.phone.replace(/\s/g, "")}`}
-                      className="text-sm text-white/55 transition-colors hover:text-brand-on-dark"
+                      className="-mx-2 inline-flex min-h-11 w-fit items-center rounded-md px-2 text-sm text-white/55 transition-colors hover:text-brand-on-dark focus-visible:ring-2 focus-visible:ring-brand-on-dark focus-visible:outline-none"
                     >
                       {office.phone}
                     </a>
@@ -87,14 +99,14 @@ export function SiteFooter() {
                   {office.phone2 && (
                     <a
                       href={`tel:${office.phone2.replace(/\s/g, "")}`}
-                      className="text-sm text-white/55 transition-colors hover:text-brand-on-dark"
+                      className="-mx-2 inline-flex min-h-11 w-fit items-center rounded-md px-2 text-sm text-white/55 transition-colors hover:text-brand-on-dark focus-visible:ring-2 focus-visible:ring-brand-on-dark focus-visible:outline-none"
                     >
                       {office.phone2}
                     </a>
                   )}
                   <a
                     href={`mailto:${office.email}`}
-                    className="text-sm text-white/55 transition-colors hover:text-brand-on-dark"
+                    className="-mx-2 inline-flex min-h-11 w-fit items-center rounded-md px-2 text-sm text-white/55 transition-colors hover:text-brand-on-dark focus-visible:ring-2 focus-visible:ring-brand-on-dark focus-visible:outline-none"
                   >
                     {office.email}
                   </a>
@@ -113,7 +125,7 @@ export function SiteFooter() {
 
           <div className="flex flex-wrap gap-12">
             {FOOTER_SECTIONS.map((section) => (
-              <div key={section.heading} className="flex flex-col gap-3">
+              <div key={section.heading} className="flex flex-col gap-1">
                 <p className="text-sm font-semibold tracking-wide text-white">
                   {section.heading}
                 </p>
@@ -122,12 +134,15 @@ export function SiteFooter() {
                     <Link
                       key={link.label}
                       href={link.href}
-                      className="text-sm text-white/70 transition-colors hover:text-brand-on-dark"
+                      className="-mx-2 inline-flex min-h-11 w-fit items-center rounded-md px-2 text-sm text-white/70 transition-colors hover:text-brand-on-dark focus-visible:ring-2 focus-visible:ring-brand-on-dark focus-visible:outline-none"
                     >
                       {link.label}
                     </Link>
                   ) : (
-                    <span key={link.label} className="text-sm text-white/70">
+                    <span
+                      key={link.label}
+                      className="inline-flex min-h-11 w-fit items-center text-sm text-white/70"
+                    >
                       {link.label}
                     </span>
                   ),
@@ -139,7 +154,10 @@ export function SiteFooter() {
               <p className="text-sm font-semibold tracking-wide text-white">
                 Follow us
               </p>
-              <div className="flex gap-4">
+              {/* size-11 boxes, not size-5 icons. The glyph stays 20px; the
+                  BOX is the 44px target. -mx-3 pulls the row back so the first
+                  icon still lines up with the heading above it. */}
+              <div className="-mx-3 flex gap-1">
                 {SOCIAL_LINKS.map((social) => {
                   const Icon =
                     SOCIAL_ICONS[social.label as keyof typeof SOCIAL_ICONS];
@@ -150,7 +168,7 @@ export function SiteFooter() {
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={social.label}
-                      className="text-white/70 transition-colors hover:text-brand-on-dark"
+                      className="grid size-11 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-brand-on-dark focus-visible:ring-2 focus-visible:ring-brand-on-dark focus-visible:outline-none"
                     >
                       <Icon className="size-5" />
                     </a>

@@ -96,7 +96,9 @@ export function HeroGradient({
     if (!el) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    const fine = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+    const fine = window.matchMedia(
+      "(hover: hover) and (pointer: fine)",
+    ).matches;
     let frame = 0;
 
     const onMove = (event: PointerEvent) => {
@@ -147,7 +149,12 @@ export function HeroGradient({
       // Scaling DOWN from full size, never up. The element is authored at its
       // final diameter so the compositor rasterises the gradient once at the
       // size it ends at; growing a small layer 20x would resample it.
-      ripple.animate(
+      // Promote for the 720ms it is actually moving, then drop it. Left on
+      // permanently (it used to live in the CSS rule) this holds a 900x900
+      // compositor layer for an element that is invisible between clicks.
+      ripple.style.willChange = "transform, opacity";
+
+      const animation = ripple.animate(
         [
           { transform: `${at} scale(0.06)`, opacity: 0 },
           { transform: `${at} scale(0.34)`, opacity: 1, offset: 0.26 },
@@ -155,6 +162,15 @@ export function HeroGradient({
         ],
         { duration: 720, easing: "cubic-bezier(0.22, 1, 0.36, 1)" },
       );
+
+      // `finished` rejects when a later click cancels this one, and that
+      // cancel path already sets its own will-change. Swallow it rather than
+      // clearing the hint out from under the ripple that replaced this.
+      animation.finished
+        .then(() => {
+          ripple.style.willChange = "";
+        })
+        .catch(() => {});
     };
 
     if (fine) {
@@ -168,9 +184,9 @@ export function HeroGradient({
       el.removeEventListener("pointermove", onMove);
       el.removeEventListener("pointerleave", onLeave);
       el.removeEventListener("pointerdown", onDown);
-      rippleRef.current
-        ?.getAnimations()
-        .forEach((animation) => animation.cancel());
+      const ripple = rippleRef.current;
+      ripple?.getAnimations().forEach((animation) => animation.cancel());
+      if (ripple) ripple.style.willChange = "";
     };
   }, []);
 

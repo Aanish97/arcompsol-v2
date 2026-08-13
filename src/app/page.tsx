@@ -31,6 +31,7 @@ import { ArrowRight } from "lucide-react";
 
 import { HeroGradient } from "@/components/common/hero-gradient";
 import { HeroVisual } from "@/components/common/hero-visual";
+import { StaggerText } from "@/components/common/stagger-text";
 import { Reveal } from "@/components/common/reveal";
 import { ScrollToButton } from "@/components/common/scroll-to-button";
 import { ServiceCard } from "@/components/common/service-card";
@@ -70,10 +71,24 @@ export default function HomePage() {
               />
             </p>
 
-            <h1 className="mt-6 text-balance">
-              {headStart}{" "}
-              <span className="bg-gradient-to-r from-brand to-brand-deep bg-clip-text text-transparent">
-                with {headAccent}
+            {/* SOLID --brand, not a clipped gradient. The accent used a
+                background-clip trick on transparent text, which two design
+                audits independently flag as an AI tell. It also failed on its
+                own terms: #1F5F4B to #123A2E is too short a ramp to read as a
+                gradient at any size, so it paid the cost without producing the
+                effect, and transparent text means the headline disappears
+                entirely if the clip ever fails to paint. */}
+            {/* data-stagger="load", NOT a <Reveal>. The hero is on screen at
+                first paint, so it animates on load — and it rises without
+                fading, so the words are legible from the first frame. `offset`
+                keeps one continuous count across the two halves. */}
+            <h1 data-stagger="load" className="mt-6 text-balance">
+              <StaggerText text={headStart} />{" "}
+              <span className="text-brand">
+                <StaggerText
+                  text={`with ${headAccent}`}
+                  offset={headStart.split(" ").length}
+                />
               </span>
             </h1>
 
@@ -126,12 +141,34 @@ export default function HomePage() {
         </div>
       </HeroGradient>
 
-      <Section id="services" width="wide" className="scroll-mt-20 bg-surface">
-        <Reveal className="w-full">
-          <div className="relative w-full overflow-hidden rounded-[2rem] border border-border bg-secondary px-6 py-14 shadow-[0_4px_24px_rgb(var(--shadow-tint)/0.06)] md:px-10 md:py-20">
-            <div aria-hidden className="bg-grid absolute inset-0" />
+      {/* NEGATIVE scroll-margin, and the anchor stays on the <Section>.
+          Both are load-bearing.
 
-            <div className="relative">
+          It must be on the Section because the panel inside is
+          `overflow-hidden`: scrollIntoView walks up scrolling each ancestor
+          scrollport, and inside a hidden box the target already counts as "in
+          view", so the walk resolves there and the DOCUMENT NEVER SCROLLS. An
+          anchor moved onto the heading's wrapper made "See what we do" a dead
+          button. Do not move this id inside the panel.
+
+          It is negative because the Section's own padding plus the panel's sits
+          above the heading — 112px stacked at base, 128 at md, 160 at lg — so a
+          positive offset parked all of that empty tint on screen and pushed the
+          second row of tiles below the fold. Offsetting it lands the HEADING
+          about 80px down, which frames the whole block: heading, description
+          and all six tiles in one screen (804px of content against 798px of
+          usable viewport at 871px tall).
+
+          Re-derive these if either padding changes: offset = 80 - (section py +
+          panel py). */}
+      <Section
+        id="services"
+        width="wide"
+        className="-scroll-mt-8 bg-surface md:-scroll-mt-12 lg:-scroll-mt-20"
+      >
+        <Reveal className="w-full">
+          <div className="relative w-full overflow-hidden rounded-3xl border border-border bg-secondary px-6 py-14 shadow-[0_4px_24px_rgb(var(--shadow-tint)/0.06)] md:px-10 md:py-20">
+            <div>
               <div className="flex flex-col items-start">
                 <SectionHeading align="start">
                   {SERVICES_SECTION.title}

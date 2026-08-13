@@ -33,12 +33,14 @@ export const VALUES = [
   },
   {
     heading: "Ownership",
+    // DRAFT — pending the owner's own wording.
     description:
-      "We do the right thing even when it's the harder option, and especially when no one's looking.",
+      "We take responsibility for the outcome, not just the task, and we fix what is ours without waiting to be asked.",
   },
   {
     heading: "Commitment",
+    // DRAFT — pending the owner's own wording.
     description:
-      "Improving global outcomes is our top priority at work, and it is also the foundation for individual success.",
+      "We finish what we start, and we stay with a project through its difficult parts rather than handing it back.",
   },
 ];

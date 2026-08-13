@@ -25,16 +25,18 @@
  * genuinely tiring for six sentences.
  *
  * ── DO NOT ──
- * - Do not remove `loop`. With six items and both arrows always visible, a
+ * - Do not remove `loop`. With five items and both arrows always visible, a
  *   non-looping carousel disables an arrow at each end, which reads as broken
  *   rather than as a boundary.
  * - Do not re-centre the quote text. See above; the measure is set for a left
  *   edge.
  */
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 import { CarouselAutoplay } from "@/components/common/carousel-autoplay";
 import { CarouselControls } from "@/components/common/carousel-controls";
+import { ExpandableQuote } from "@/components/common/expandable-quote";
 import { Reveal } from "@/components/common/reveal";
 import {
   Section,
@@ -46,6 +48,7 @@ import {
   Carousel,
   CarouselContent,
   CarouselItem,
+  type CarouselApi,
 } from "@/components/ui/carousel";
 import { TESTIMONIALS, TESTIMONIALS_SECTION } from "@/content/testimonials";
 
@@ -58,13 +61,40 @@ import { TESTIMONIALS, TESTIMONIALS_SECTION } from "@/content/testimonials";
  * which reads as lopsided rather than as narrow; centred it is 128px a side and
  * reads as a deliberate inset.
  *
- * The CONTENTS are left-aligned at the owner's request. The heading has to
+ * The CONTENTS are left-aligned. The heading has to
  * share the carousel's column to do that — hung on the max-w-6xl container it
  * would start 128px outside the card's left edge and read as a mistake rather
  * than as an alignment. That shared column is the whole reason for the wrapper
  * div; do not flatten it back into two siblings of Section.
  */
 export function Testimonials() {
+  const [api, setApi] = useState<CarouselApi>();
+
+  /**
+   * WHICH quote is expanded, or null. One value, because three behaviours read
+   * it and they must agree:
+   *
+   *   - the quote itself renders clamped or full;
+   *   - autoplay holds while anything is open, so the carousel never moves out
+   *     from under someone who is mid-sentence;
+   *   - it clears on slide change, because the slides are a flex row and all
+   *     take the height of the tallest — one open quote leaves every other
+   *     slide stretched with a slab of empty space under its text (measured at
+   *     390px: 354px collapsed, 514px with one open).
+   *
+   * Held here rather than inside each quote so autoplay can see it at all.
+   */
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!api) return;
+    const onSelect = () => setExpandedIndex(null);
+    api.on("select", onSelect);
+    return () => {
+      api.off("select", onSelect);
+    };
+  }, [api]);
+
   return (
     <Section width="wide" className="bg-surface">
       <div className="w-full max-w-4xl">
@@ -87,11 +117,12 @@ export function Testimonials() {
             someone said. Narrower also means fewer characters per line at the
             same type size. */}
         <Carousel
+          setApi={setApi}
           opts={{ loop: true, align: "start" }}
           className="mt-10 w-full"
         >
           <CarouselContent>
-            {TESTIMONIALS.map((testimonial) => (
+            {TESTIMONIALS.map((testimonial, index) => (
               <CarouselItem key={testimonial.name}>
                 <Card className="relative h-full overflow-hidden rounded-2xl border-border bg-surface-alt p-0">
                   {/* Blockquote rule. Structural, not ornamental: it marks the
@@ -111,48 +142,86 @@ export function Testimonials() {
                     and the attribution is the thing most worth putting in it.
 
                     Collapses to the original stack below lg, where 260px of
-                    sidebar plus a readable measure will not fit side by side. */}
-                  <CardContent className="grid gap-6 p-6 pl-8 md:p-9 md:pl-11 lg:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] lg:items-start lg:gap-9">
-                    <figcaption className="flex items-center gap-4 lg:flex-col lg:items-start lg:gap-3">
-                      <Image
-                        src={testimonial.avatar}
-                        alt=""
-                        width={56}
-                        height={56}
-                        className="size-12 shrink-0 rounded-full object-cover ring-2 ring-brand/20 lg:size-16"
-                      />
-                      <div>
-                        <p className="font-semibold text-ink">
-                          {testimonial.name}
-                        </p>
-                        <p className="mt-0.5 text-sm text-ink-soft">
-                          {testimonial.organization}
-                        </p>
-                      </div>
-                    </figcaption>
+                    sidebar plus a readable measure will not fit side by side.
 
-                    <blockquote className="measure text-base leading-relaxed text-ink-muted md:text-lg">
-                      {testimonial.text}
-                    </blockquote>
+                    items-start, because the full quote is the taller column and
+                    both should read from the same top edge. It was briefly
+                    items-center while the cards showed ~20-word excerpts, where
+                    the attribution column was the taller of the two. If the
+                    excerpts ever come back, that swaps again. */}
+                  <CardContent className="grid gap-6 p-6 pl-8 md:p-9 md:pl-11 lg:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] lg:items-start lg:gap-9">
+                    {/* <figure> is what makes <figcaption> legal — a
+                          figcaption with no figure ancestor is invalid and
+                          lands nowhere in the accessibility tree. `lg:contents`
+                          keeps the two-column grid above, where the caption and
+                          the quote are the grid's own children. */}
+                    <figure className="grid gap-6 lg:contents">
+                      <figcaption className="flex items-center gap-4 lg:flex-col lg:items-start lg:gap-3">
+                        <Image
+                          src={testimonial.avatar}
+                          alt=""
+                          width={56}
+                          height={56}
+                          className="size-12 shrink-0 rounded-full object-cover ring-2 ring-brand/20 lg:size-16"
+                        />
+                        <div>
+                          <p className="font-semibold text-ink">
+                            {testimonial.name}
+                          </p>
+                          <p className="mt-0.5 text-sm text-ink-soft">
+                            {testimonial.organization}
+                          </p>
+                        </div>
+                      </figcaption>
+
+                      <div>
+                        {/* BODY COPY scale, because the full quotes run 61-80
+                          words. This was briefly text-lg/md:text-xl while the
+                          cards showed ~20-word excerpts, where the quote was a
+                          pull quote and had to carry the band. At full length
+                          that size is a wall of 20px text six lines deep. Kept
+                          at --ink-soft (9.84:1) rather than the original
+                          --ink-muted (6.90:1): both pass, and six sentences are
+                          worth the extra contrast.
+
+                          CLAMPED ON PHONES. At 390px the full quote runs about
+                          eleven lines, which is most of the screen for one of
+                          six slides and pushes the carousel's own controls
+                          below the fold. The full text stays in the DOM — this
+                          is a visual clamp, and these are attributed statements
+                          that must remain readable to search engines and screen
+                          readers. */}
+                        {/* EXPANDS IN PLACE, because there is nowhere to send
+                            anyone. The carousel is the only place these quotes
+                            appear, so a clamp without an expander would cut
+                            them off with no way to finish reading. Keeps the
+                            phone length down and gives the rest back on tap.
+                            Full text stays in the DOM either way. */}
+                        <ExpandableQuote
+                          text={testimonial.text}
+                          className="md:text-lg"
+                          expanded={expandedIndex === index}
+                          onToggle={() =>
+                            setExpandedIndex(
+                              expandedIndex === index ? null : index,
+                            )
+                          }
+                        />
+                      </div>
+                    </figure>
                   </CardContent>
                 </Card>
               </CarouselItem>
             ))}
           </CarouselContent>
-
-          {/* 4.5s, set explicitly at the owner's request — NOT a default, and
-            not a number to copy elsewhere without reading this.
-
-            These quotes are 61–80 words: 18–24 seconds of reading at 200wpm.
-            The slide therefore changes roughly four to five times during a
-            single read-through, so anyone reading without their cursor over
-            the carousel loses the quote mid-sentence. Pause-on-hover, focus
-            and drag are all that make it usable, and they only help people
-            whose pointer happens to be there.
-
-            Raise this before lowering it. If it needs to be this fast, the
-            better fix is shorter quotes, not a shorter timer. */}
-          <CarouselAutoplay interval={4500} />
+          <CarouselAutoplay interval={6000} paused={expandedIndex !== null} />
+          {/* No `pausable`: the play/pause button is removed by owner decision
+              (2026-08-12). Autoplay still stops on hover, focus, drag, when the
+              section is off-screen, when the tab is hidden, and under
+              prefers-reduced-motion — see carousel-autoplay.tsx. Note this
+              leaves no explicit pause control for a 6s auto-advance, which is
+              what WCAG 2.2.2 asks for; the focus-stop is the closest thing that
+              remains. Restore `pausable` to put it back. */}
           <CarouselControls label="testimonial" />
         </Carousel>
       </div>

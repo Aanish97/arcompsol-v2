@@ -41,20 +41,24 @@ export const QUALITIES = [
 
 export const BENEFITS = [
   {
-    benefit: "Bi-Annual Dinner", 
-    description: "Working day after day on projects In a remote environment can make you feel left out, but we at Arcompsol do plan bi-annual dinners for a refreshing eve with our colleagues.",
+    benefit: "Bi-Annual Dinner",
+    description:
+      "Working day after day on projects In a remote environment can make you feel left out, but we at Arcompsol do plan bi-annual dinners for a refreshing eve with our colleagues.",
   },
   {
-    benefit: "Remote Work", 
-    description: "Work from the ease of your home, enjoy time with family, and avoid the hectic traffic.",
+    benefit: "Remote Work",
+    description:
+      "Work from the ease of your home, enjoy time with family, and avoid the hectic traffic.",
   },
   {
-    benefit: "Market Competitive Salaries", 
-    description: "With inflation sky-high these days, Arcompsol believes in keeping care of its employees by having market-competitive salaries.",
+    benefit: "Market Competitive Salaries",
+    description:
+      "With inflation sky-high these days, Arcompsol believes in keeping care of its employees by having market-competitive salaries.",
   },
   {
-    benefit: "Flexible Working hours", 
-    description: "Arcompsol understands the importance of family and the pleasure of working on your own time, and that it gives you the flexibility to enjoy with family more and more.",
+    benefit: "Flexible Working hours",
+    description:
+      "Arcompsol understands the importance of family and the pleasure of working on your own time, and that it gives you the flexibility to enjoy with family more and more.",
   },
   {
     benefit: "Location",
@@ -66,7 +70,6 @@ export const BENEFITS = [
     description:
       "* 100% employer-paid medical coverage and 99% employer-paid dental and vision coverage for you and all your dependents.FSAs available too.\n* $60 per month for however you prefer to stay in shape.",
   },
-  
 ];
 
 export interface JobOpening {
@@ -85,59 +88,61 @@ export const CURRENT_OPENINGS: JobOpening[] = [
     title: "Backend Engineer",
     team: "Engineering",
     location: "Remote",
-    description: "Join our engineering team to build scalable backend systems and APIs. Work with modern technologies and contribute to high-impact projects that serve thousands of users.",
+    description:
+      "Join our engineering team to build scalable backend systems and APIs. Work with modern technologies and contribute to high-impact projects that serve thousands of users.",
     requirements: [
       "3+ years of backend development experience",
       "Proficiency in Node.js, Python, or Java",
       "Experience with databases and cloud platforms",
-      "Strong problem-solving skills"
+      "Strong problem-solving skills",
     ],
     benefits: [
       "Competitive salary",
       "Remote work flexibility",
-      "Professional development opportunities"
-    ]
+      "Professional development opportunities",
+    ],
   },
   {
     id: "frontend-engineer-1",
     title: "Frontend Engineer",
     team: "Engineering",
     location: "Remote",
-    description: "Create beautiful and intuitive user interfaces using modern frontend technologies. Collaborate with designers and backend engineers to deliver exceptional user experiences.",
+    description:
+      "Create beautiful and intuitive user interfaces using modern frontend technologies. Collaborate with designers and backend engineers to deliver exceptional user experiences.",
     requirements: [
       "3+ years of frontend development experience",
       "Expertise in React, Vue, or Angular",
       "Strong CSS and JavaScript skills",
-      "Experience with responsive design"
+      "Experience with responsive design",
     ],
     benefits: [
       "Competitive salary",
       "Remote work flexibility",
-      "Latest development tools and equipment"
-    ]
+      "Latest development tools and equipment",
+    ],
   },
   {
     id: "fullstack-engineer-1",
     title: "Fullstack Engineer",
     team: "Engineering",
     location: "Remote",
-    description: "Work across the entire technology stack, from frontend user interfaces to backend services. Take ownership of features from conception to deployment.",
+    description:
+      "Work across the entire technology stack, from frontend user interfaces to backend services. Take ownership of features from conception to deployment.",
     requirements: [
       "4+ years of fullstack development experience",
       "Proficiency in both frontend and backend technologies",
       "Experience with modern development practices",
-      "Strong communication and collaboration skills"
+      "Strong communication and collaboration skills",
     ],
     benefits: [
       "Competitive salary",
       "Remote work flexibility",
-      "Opportunity to work on diverse projects"
-    ]
-  }
+      "Opportunity to work on diverse projects",
+    ],
+  },
 ];
 
 export const OPENINGS_SECTION = {
   title: "Current Openings",
-  subtitle:
-    "Join our team and work on exciting projects with cutting-edge technologies",
+  subtitle: "Join our team and work on projects that reach real users",
 };

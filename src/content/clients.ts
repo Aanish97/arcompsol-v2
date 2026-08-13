@@ -15,10 +15,9 @@
  *   exists so the claim stays auditable from this file alone.
  *
  * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
- * ONE CONSUMER TODAY: app/opengraph-image.tsx. This briefly also fed a client
- * strip under the hero, which the owner removed on 2026-08-11; the module was
- * kept because the share card still needs the list and because the sourcing
- * rule above is worth keeping written down.
+ * ONE CONSUMER: app/opengraph-image.tsx. The list lives in its own module
+ * because the sourcing rule above is worth keeping written down, and because
+ * the share card is not the only place it could reasonably be used.
  *
  * A separate module rather than a field on TESTIMONIALS, because the mapping is
  * not one-to-one: Abrar Akhtar's single quote covers two companies, so six

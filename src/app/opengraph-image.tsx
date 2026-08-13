@@ -45,6 +45,12 @@
  *   ignores them or fails the build, and neither shows up until someone shares
  *   a link.
  */
+/* impeccable-disable broken-image -- file-level, and it has to be: the only
+   <img> here takes a data: URI built from logo-white.png at build time, which
+   the detector cannot resolve through a variable. A -next-line waiver would
+   have to sit between the eslint-disable-next-line and the tag, which would
+   point eslint's waiver at a comment instead of the element. Verified: the
+   rendered card shows the logo. */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -72,66 +78,69 @@ export default async function OpengraphImage() {
   const logoSrc = `data:image/png;base64,${logo.toString("base64")}`;
 
   return new ImageResponse(
-    (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          backgroundColor: NAVY,
-          padding: "68px 76px",
-          fontFamily: "Poppins",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- Satori
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        backgroundColor: NAVY,
+        padding: "68px 76px",
+        fontFamily: "Poppins",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+        {/* eslint-disable-next-line @next/next/no-img-element -- Satori
               renders raw <img> only; next/image does not exist in this runtime. */}
-          <img src={logoSrc} alt="" width={58} height={64} />
-          <div style={{ display: "flex", fontSize: 40, color: PAPER }}>
-            Arcompsol
-          </div>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <div
-            style={{
-              display: "flex",
-              fontSize: 78,
-              lineHeight: 1.06,
-              letterSpacing: "-0.03em",
-              color: PAPER,
-            }}
-          >
-            Power your business
-          </div>
-          <div
-            style={{
-              display: "flex",
-              fontSize: 78,
-              lineHeight: 1.06,
-              letterSpacing: "-0.03em",
-              color: GREEN,
-            }}
-          >
-            with innovation
-          </div>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-          <div style={{ display: "flex", width: 72, height: 4, backgroundColor: GREEN }} />
-          <div style={{ display: "flex", fontSize: 26, color: MUTED }}>
-            {CLIENTS.map((client) => client.name).join("   ·   ")}
-          </div>
+        <img src={logoSrc} alt="" width={58} height={64} />
+        <div style={{ display: "flex", fontSize: 40, color: PAPER }}>
+          Arcompsol
         </div>
       </div>
-    ),
+
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <div
+          style={{
+            display: "flex",
+            fontSize: 78,
+            lineHeight: 1.06,
+            letterSpacing: "-0.03em",
+            color: PAPER,
+          }}
+        >
+          Power your business
+        </div>
+        <div
+          style={{
+            display: "flex",
+            fontSize: 78,
+            lineHeight: 1.06,
+            letterSpacing: "-0.03em",
+            color: GREEN,
+          }}
+        >
+          with innovation
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+        <div
+          style={{
+            display: "flex",
+            width: 72,
+            height: 4,
+            backgroundColor: GREEN,
+          }}
+        />
+        <div style={{ display: "flex", fontSize: 26, color: MUTED }}>
+          {CLIENTS.map((client) => client.name).join("   ·   ")}
+        </div>
+      </div>
+    </div>,
     {
       ...size,
-      fonts: [
-        { name: "Poppins", data: poppins, weight: 600, style: "normal" },
-      ],
+      fonts: [{ name: "Poppins", data: poppins, weight: 600, style: "normal" }],
     },
   );
 }
