@@ -107,23 +107,77 @@ function escapeHtml(value: string) {
  * - Do not drop escapeHtml on any interpolated value. These are strings a
  *   stranger typed into a public form.
  */
+/**
+ * ONE FAMILY, NOT TWO. The subject used to be set in a serif stack (Iowan Old
+ * Style / Palatino / Georgia) and it was the largest thing in the message —
+ * which meant the element carrying the most visual weight was in a typeface
+ * THIS BRAND DOES NOT OWN. DESIGN.md's Type section is unambiguous: Poppins for
+ * headings, Open Sans for body, and no serif anywhere on the site. A reader who
+ * knows the site got a letter from a different company.
+ *
+ * Neither real face can be used here — email loads no web fonts — so the
+ * subject now takes the same grotesque stack as everything else, at 600 with
+ * tighter tracking to hold its rank. Fewer stacks is also plainly better email
+ * practice: every additional family is another chance for one client to pick a
+ * fallback nobody previewed.
+ */
 const SANS =
-  "'Helvetica Neue',Helvetica,Arial,sans-serif"; /* impeccable-disable-line overused-font -- HTML email. Web fonts do not load in Outlook or Gmail; this is the closest safe stack to the site's grotesque. */
-const SERIF = "'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif";
+  "'Helvetica Neue',Helvetica,Arial,sans-serif"; /* impeccable-disable-line overused-font -- HTML email. Web fonts do not load in Outlook or Gmail; this is the closest safe stack to the site's Poppins/Open Sans. */
 const MONO = "'SF Mono',Menlo,Consolas,'Courier New',monospace";
 
-/** One labelled line of metadata. Mono label above, value below. */
-const META = (label: string, value: string, href?: string) => `
-              <tr>
-                <td style="padding:0 0 3px 0;font-family:${MONO};font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#8b8b85;">${label}</td>
-              </tr>
-              <tr>
-                <td style="padding:0 0 20px 0;font-family:${SANS};font-size:15px;line-height:22px;color:#2f3437;">${
-                  href
-                    ? `<a href="${href}" style="color:#1f5f4b;text-decoration:none;border-bottom:1px solid #cfdcd6;">${value}</a>`
-                    : value
-                }</td>
-              </tr>`;
+/**
+ * THE PALETTE, HAND-MIRRORED. Every value here is a copy of a token in
+ * `globals.css`, and the key is the token it copies — DESIGN.md requires that
+ * of this file, because the renderer resolves no custom properties and a bare
+ * literal in the markup is a value nobody can trace back.
+ *
+ * WHEN THE PALETTE CHANGES, THIS BLOCK CHANGES BY HAND. It is the only copy of
+ * those values outside `globals.css` and `opengraph-image.tsx`, and nothing
+ * will tell you it has gone stale — an email simply starts arriving in last
+ * season's colours.
+ *
+ * Four literals in the previous version belonged to no token at all: #f4f6f8
+ * and #ffffff for the grounds, #68737e for every muted label, and #cbd8d2 under
+ * the links. They were close enough to look deliberate and wrong enough that
+ * the mail never actually matched the site.
+ */
+const C = {
+  brand: "#1b5542", // --brand
+  brandDeep: "#11362a", // --brand-deep
+  brandDark: "#16241f", // --brand-dark
+  brandNavy: "#111c1a", // --brand-navy
+  ink: "#12181d", // --ink
+  inkSoft: "#39424a", // --ink-soft
+  inkMuted: "#5a646d", // --ink-muted
+  surface: "#fafbfc", // --surface
+  surfaceAlt: "#f0f3f6", // --surface-alt
+  secondary: "#e4eaef", // --secondary
+  border: "#d5dde4", // --border
+  onDark: "#eef3f1", // --on-dark
+  onDarkMuted: "#8c9a97", // --on-dark-muted
+} as const;
+
+/**
+ * One field of the enquiry: mono label, then the value.
+ *
+ * The label sits on --secondary rather than on the card, so the two contact
+ * facts read as one block instead of as four loose lines. --ink-muted on that
+ * tint measures 5.15:1, which is why the label can be this small.
+ */
+const FIELD = (label: string, value: string, href?: string) => `
+                <tr>
+                  <td style="padding:0 0 4px 0;font-family:${MONO};font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:${C.inkMuted};">${label}</td>
+                </tr>
+                <tr>
+                  <td style="padding:0 0 18px 0;font-family:${SANS};font-size:16px;line-height:22px;color:${C.inkSoft};">${
+                    href
+                      ? // Underlined in the brand at 40%, not in a hand-mixed
+                        // grey. An <a> with no underline at all is the one thing
+                        // a mail client will helpfully "fix" for you.
+                        `<a href="${href}" style="color:${C.brand};text-decoration:none;border-bottom:1px solid ${C.border};">${value}</a>`
+                      : value
+                  }</td>
+                </tr>`;
 
 function buildEmailText(
   name: string,
@@ -172,61 +226,91 @@ function buildEmailHtml(
 <meta name="color-scheme" content="light">
 <title>New enquiry</title>
 </head>
-<body style="margin:0;padding:0;background-color:#f7f6f3;">
+<body style="margin:0;padding:0;background-color:${C.surfaceAlt};">
 <div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${safe.subject} &ndash; from ${safe.name}</div>
 
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f7f6f3;padding:40px 16px;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.surfaceAlt};padding:40px 16px;">
   <tr>
     <td align="center">
-      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:#ffffff;border:1px solid #eaeae6;border-radius:12px;">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:${C.surface};border:1px solid ${C.border};border-radius:16px;overflow:hidden;">
 
+        <!-- MASTHEAD. The dark band is the featured ValueCard's own device
+             (bg-gradient-to-br from-brand-dark to-brand-navy) and it is the
+             only strong brand moment an email can carry — a logo image would
+             be blocked by default in most clients and arrive as a broken box,
+             so the mark is set as text on a ground instead.
+             background-color first, background-image second: Outlook ignores
+             the gradient and keeps the navy, which is the intended fallback. -->
         <tr>
-          <td style="padding:32px 40px 0 40px;">
+          <td style="padding:22px 32px;background-color:${C.brandNavy};background-image:linear-gradient(135deg,${C.brandDark} 0%,${C.brandNavy} 100%);">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td style="font-family:${MONO};font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:#1f5f4b;">Arcompsol</td>
-                <td align="right" style="font-family:${MONO};font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:#8b8b85;">New enquiry</td>
+                <td style="font-family:${SANS};font-size:17px;font-weight:bold;letter-spacing:-0.01em;color:${C.onDark};">Arcompsol</td>
+                <td align="right" style="font-family:${MONO};font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:${C.onDarkMuted};">New enquiry</td>
               </tr>
             </table>
           </td>
         </tr>
 
+        <!-- The subject is the headline and the name is its byline: 28px
+             against 15px, so the inbox preview and the eye both land on what
+             the enquiry is about before who sent it. -->
         <tr>
-          <td style="padding:26px 40px 0 40px;">
-            <p style="margin:0;font-family:${SERIF};font-size:28px;line-height:34px;letter-spacing:-0.02em;color:#111111;">${safe.subject}</p>
-            <p style="margin:10px 0 0 0;font-family:${SANS};font-size:15px;line-height:22px;color:#787774;">from ${safe.name}</p>
+          <td style="padding:34px 40px 0 40px;">
+            <p style="margin:0;font-family:${SANS};font-size:27px;line-height:34px;font-weight:600;letter-spacing:-0.02em;color:${C.ink};">${safe.subject}</p>
+            <p style="margin:10px 0 0 0;font-family:${SANS};font-size:15px;line-height:22px;color:${C.inkMuted};">from ${safe.name}</p>
           </td>
         </tr>
 
-        <tr><td style="padding:28px 40px 0 40px;"><div style="height:1px;background-color:#eaeae6;font-size:0;line-height:0;">&nbsp;</div></td></tr>
-
+        <!-- THE MESSAGE COMES BEFORE THE CONTACT DETAILS, which is a change.
+             The details were above it, so every enquiry opened with two lines
+             of address book before it said anything. You read to decide whether
+             to reply; you scroll back for the number once you have decided. -->
         <tr>
-          <td style="padding:26px 40px 0 40px;">
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-              ${META("Email", safe.email, `mailto:${encodeURIComponent(email)}`)}
-              ${META("Mobile", safe.mobile, `tel:${mobile.replace(/[^+\d]/g, "")}`)}
-            </table>
-          </td>
-        </tr>
-
-        <tr>
-          <td style="padding:10px 40px 8px 40px;">
-            <p style="margin:0 0 14px 0;font-family:${MONO};font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:#8b8b85;">Message</p>
+          <td style="padding:30px 40px 0 40px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
-                <td width="2" style="width:2px;background-color:#1f5f4b;font-size:0;line-height:0;">&nbsp;</td>
-                <td style="padding:2px 0 2px 20px;font-family:${SANS};font-size:16px;line-height:26px;color:#2f3437;">${safe.body}</td>
+                <!-- 4px, --brand to --brand-deep, exactly the testimonial
+                     card's rule (absolute inset-y-0 left-0 w-1 bg-gradient-to-b
+                     from-brand to-brand-deep). It was 2px and flat here, so the
+                     one device the site and the mail share did not match.
+                     Outlook drops the gradient and keeps the solid brand. -->
+                <td width="4" style="width:4px;background-color:${C.brand};background-image:linear-gradient(180deg,${C.brand} 0%,${C.brandDeep} 100%);font-size:0;line-height:0;">&nbsp;</td>
+                <td style="padding:0 0 0 22px;font-family:${SANS};font-size:16px;line-height:27px;color:${C.inkSoft};">${safe.body}</td>
               </tr>
             </table>
           </td>
         </tr>
 
-        <tr><td style="padding:30px 40px 0 40px;"><div style="height:1px;background-color:#eaeae6;font-size:0;line-height:0;">&nbsp;</div></td></tr>
-
+        <!-- The two contact facts, grouped on --secondary so they read as one
+             block rather than four stacked lines on the card ground. -->
         <tr>
-          <td style="padding:18px 40px 32px 40px;font-family:${MONO};font-size:10px;line-height:17px;letter-spacing:0.04em;color:#a3a39c;text-transform:uppercase;">
-            Contact form &middot; arcompsol.com<br>
-            <span style="text-transform:none;letter-spacing:0;font-family:${SANS};font-size:12px;color:#8b8b85;">Reply to this message and it goes to ${safe.name}.</span>
+          <td style="padding:30px 40px 0 40px;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.secondary};border-radius:10px;">
+              <tr>
+                <td style="padding:22px 24px 4px 24px;">
+                  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                    ${FIELD("Email", safe.email, `mailto:${encodeURIComponent(email)}`)}
+                    ${FIELD("Mobile", safe.mobile, `tel:${mobile.replace(/[^+\d]/g, "")}`)}
+                  </table>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Footer on --surface-alt: a band rather than a hairline, so the
+             message ends somewhere instead of trailing off. -->
+        <tr>
+          <td style="padding:32px 0 0 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.surfaceAlt};border-top:1px solid ${C.border};">
+              <tr>
+                <td style="padding:20px 40px;font-family:${SANS};font-size:13px;line-height:20px;color:${C.inkMuted};">
+                  Reply to this message and it goes to ${safe.name}.
+                  <span style="display:block;margin-top:6px;font-family:${MONO};font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:${C.inkMuted};">Contact form &middot; arcompsol.com</span>
+                </td>
+              </tr>
+            </table>
           </td>
         </tr>
 

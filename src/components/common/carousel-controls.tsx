@@ -45,7 +45,7 @@
  *   unmount.
  */
 import { ArrowLeft, ArrowRight, Pause, Play } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useCarousel } from "@/components/ui/carousel";
@@ -54,18 +54,58 @@ import { cn } from "@/lib/utils";
 export function CarouselControls({
   label,
   pausable = false,
+  tone = "light",
   className,
 }: {
   /** Names what is being paged, for screen readers: "testimonial", "benefit". */
   label: string;
   /** Set wherever a CarouselAutoplay is rendered. Required for WCAG 2.2.2. */
   pausable?: boolean;
+  /**
+   * The ground these sit on. NOT cosmetic: the light dots are --ink at 20% and
+   * the arrows are shadcn's `outline`, which is --border on --background — on a
+   * navy band all three are effectively invisible. The benefits carousel moved
+   * to a dark band and every control on it disappeared.
+   */
+  tone?: "light" | "dark";
   className?: string;
 }) {
+  const dark = tone === "dark";
   const { api, scrollPrev, scrollNext } = useCarousel();
-  const [selected, setSelected] = useState(0);
-  const [snapCount, setSnapCount] = useState(0);
   const [paused, setPaused] = useState(false);
+
+  /**
+   * Read from Embla, do not mirror it. Same reasoning as ui/carousel.tsx: this
+   * was two `useState`s seeded by a `sync()` call in an effect body, so the
+   * dots rendered as "1 of 0" for one frame and every select cost a second
+   * render. Subscribing directly means the dot row is right on first paint.
+   */
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      if (!api) return () => {};
+      api.on("select", onStoreChange);
+      api.on("reInit", onStoreChange);
+      return () => {
+        api.off("select", onStoreChange);
+        api.off("reInit", onStoreChange);
+      };
+    },
+    [api],
+  );
+
+  const selected = useSyncExternalStore(
+    subscribe,
+    () => api?.selectedScrollSnap() ?? 0,
+    () => 0,
+  );
+  // scrollSnapList() allocates a fresh array each call, so its LENGTH is what
+  // is read here. Returning the array itself would hand useSyncExternalStore a
+  // new identity every render and spin forever.
+  const snapCount = useSyncExternalStore(
+    subscribe,
+    () => api?.scrollSnapList().length ?? 0,
+    () => 0,
+  );
 
   const togglePaused = useCallback(() => {
     if (!api) return;
@@ -75,23 +115,6 @@ export function CarouselControls({
       return next;
     });
   }, [api]);
-
-  const sync = useCallback(() => {
-    if (!api) return;
-    setSelected(api.selectedScrollSnap());
-    setSnapCount(api.scrollSnapList().length);
-  }, [api]);
-
-  useEffect(() => {
-    if (!api) return;
-    sync();
-    api.on("select", sync);
-    api.on("reInit", sync);
-    return () => {
-      api.off("select", sync);
-      api.off("reInit", sync);
-    };
-  }, [api, sync]);
 
   return (
     <div
@@ -120,16 +143,20 @@ export function CarouselControls({
             // grid+place-items keeps the bar optically centred in the padding.
             className={cn(
               "group/dot grid h-11 min-w-11 cursor-pointer place-items-center",
-              "focus-visible:rounded focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none",
+              "focus-ring",
             )}
           >
             <span
               aria-hidden
               className={cn(
-                "block h-1.5 rounded-full transition-[width,background-color] duration-300",
+                "block h-1.5 rounded-full transition-[width,background-color] duration-220 ease-out",
                 index === selected
-                  ? "w-8 bg-gradient-to-r from-brand to-brand-deep"
-                  : "w-1.5 bg-ink/20 group-hover/dot:bg-ink/40",
+                  ? dark
+                    ? "w-8 bg-brand-on-dark"
+                    : "w-8 bg-gradient-to-r from-brand to-brand-deep"
+                  : dark
+                    ? "w-1.5 bg-on-dark/25 group-hover/dot:bg-on-dark/50"
+                    : "w-1.5 bg-ink/20 group-hover/dot:bg-ink/40",
               )}
             />
           </button>
@@ -145,7 +172,11 @@ export function CarouselControls({
             onClick={togglePaused}
             aria-label={paused ? `Play ${label}s` : `Pause ${label}s`}
             aria-pressed={paused}
-            className="size-11 rounded-full"
+            className={cn(
+              "size-11 rounded-full",
+              dark &&
+                "border-night-line bg-night-alt text-on-dark hover:bg-night-line hover:text-on-dark focus-ring-dark",
+            )}
           >
             {paused ? (
               <Play className="size-4" />
@@ -160,7 +191,11 @@ export function CarouselControls({
           size="icon-lg"
           onClick={scrollPrev}
           aria-label={`Previous ${label}`}
-          className="size-11 rounded-full"
+          className={cn(
+            "size-11 rounded-full",
+            dark &&
+              "border-night-line bg-night-alt text-on-dark hover:bg-night-line hover:text-on-dark focus-ring-dark",
+          )}
         >
           <ArrowLeft className="size-4" />
         </Button>
@@ -170,7 +205,11 @@ export function CarouselControls({
           size="icon-lg"
           onClick={scrollNext}
           aria-label={`Next ${label}`}
-          className="size-11 rounded-full"
+          className={cn(
+            "size-11 rounded-full",
+            dark &&
+              "border-night-line bg-night-alt text-on-dark hover:bg-night-line hover:text-on-dark",
+          )}
         >
           <ArrowRight className="size-4" />
         </Button>

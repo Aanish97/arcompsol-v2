@@ -55,7 +55,7 @@ export function BrandLogo({
       aria-label="Arcompsol home"
       className={cn(
         "group flex items-center gap-3 rounded-md",
-        "focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none",
+        "focus-ring",
         className,
       )}
     >
@@ -73,7 +73,7 @@ export function BrandLogo({
           "font-heading text-xl font-semibold tracking-tight transition-colors md:text-2xl",
           variant === "green"
             ? "text-brand-dark group-hover:text-brand-deep"
-            : "text-white",
+            : "text-on-dark",
         )}
       >
         Arcompsol

@@ -10,21 +10,39 @@ import { cn } from "@/lib/utils";
  * the default arrow unless something says otherwise — which meant every button
  * on this site looked unclickable. `disabled:pointer-events-none` below already
  * suppresses it for disabled buttons, so this needs no disabled: counterpart.
+ *
+ * ── THE FOCUS RING IS `focus-ring`, NOT shadcn's `ring-ring/50` ──────────────
+ * The inherited default was `focus-visible:border-ring focus-visible:ring-3
+ * focus-visible:ring-ring/50`. With `--ring` mapped to `--brand`, that half-
+ * opacity ring composites to #8aa89f on paper and MEASURES 2.48:1 against
+ * --surface, 2.42:1 on --surface-alt and 2.34:1 on --secondary. WCAG 2.2
+ * (1.4.11) requires 3:1 for a focus indicator, so every button on the site —
+ * both hero CTAs, the carousel arrows, the menu trigger, the form submit —
+ * failed it. Opacity was the whole problem: the hue was right, half of it was
+ * not there.
+ *
+ * `focus-ring` is the solid brand outline used by every link on the site, at
+ * 8.36:1 / 7.78:1 / 7.14:1 on those same three grounds. Using it here also
+ * means buttons and links finally indicate focus the SAME way.
+ *
+ * A button on a dark band must pass `focus-ring-dark` — the brand green is
+ * near-invisible on navy. The contact form's submit is the one such case.
+ * `aria-invalid:ring-*` below is untouched: that is an error state, not focus.
  */
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform] outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform] outline-none select-none focus-ring active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default: "bg-primary text-primary-foreground hover:bg-primary/80",
         outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
+          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20",
         link: "text-primary underline-offset-4 hover:underline",
         // ── Arcompsol brand variants ──────────────────────────────────
         // Ports the MUI theme's custom `primary` and `secondary` Button
@@ -32,9 +50,15 @@ const buttonVariants = cva(
         // the -1px hover lift and the shadow ramp are carried over as-is so
         // the revamp does not quietly restyle the primary call to action.
         brand:
-          "bg-gradient-to-r from-brand to-brand-deep font-semibold text-white shadow-[0_2px_4px_rgb(var(--shadow-brand)/0.25)] hover:-translate-y-px hover:shadow-[0_4px_12px_rgb(var(--shadow-brand)/0.38)] active:translate-y-0",
+          "bg-gradient-to-r from-brand to-brand-deep font-semibold text-on-brand shadow-[0_2px_4px_rgb(var(--shadow-brand)/0.25)] hover:-translate-y-px hover:shadow-[0_4px_12px_rgb(var(--shadow-brand)/0.38)] active:translate-y-0",
+        // --brand-mid, NOT --brand-blue. This pointed at --brand-blue back when
+        // that token held a green; it now holds the logo's actual blue, and an
+        // "Apply now" in blue beside green primaries would read as a different
+        // kind of action rather than a quieter one. The blue is for links,
+        // informational states and second series — not for secondary BUTTONS,
+        // which belong to the same family as the primary, one step lighter.
         brandOutline:
-          "border-brand-blue text-brand-blue border bg-transparent hover:-translate-y-px hover:bg-brand-blue hover:text-white hover:shadow-[0_4px_8px_rgb(var(--shadow-brand)/0.28)] active:translate-y-0",
+          "border-brand-mid text-brand-mid border bg-transparent hover:-translate-y-px hover:bg-brand-mid hover:text-on-brand hover:shadow-[0_4px_8px_rgb(var(--shadow-brand)/0.28)] active:translate-y-0",
       },
       size: {
         default:

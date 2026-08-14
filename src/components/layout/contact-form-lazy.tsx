@@ -36,18 +36,18 @@ const ContactForm = dynamic(
     loading: () => (
       <div
         aria-hidden
-        className="w-full max-w-xl rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-8"
+        className="w-full max-w-xl rounded-2xl border border-night-line bg-night-alt p-6 md:p-8"
       >
-        <div className="h-3 w-24 animate-pulse rounded bg-white/10" />
+        <div className="h-3 w-24 animate-pulse rounded bg-night-line/60" />
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div className="h-16 animate-pulse rounded-xl bg-white/6" />
-          <div className="h-16 animate-pulse rounded-xl bg-white/6" />
+          <div className="h-16 animate-pulse rounded-xl bg-night-field" />
+          <div className="h-16 animate-pulse rounded-xl bg-night-field" />
         </div>
-        <div className="mt-4 h-16 animate-pulse rounded-xl bg-white/6" />
-        <div className="mt-8 h-3 w-24 animate-pulse rounded bg-white/10" />
-        <div className="mt-4 h-16 animate-pulse rounded-xl bg-white/6" />
-        <div className="mt-4 h-28 animate-pulse rounded-xl bg-white/6" />
-        <div className="mt-8 h-11 w-44 animate-pulse rounded-lg bg-white/10" />
+        <div className="mt-4 h-16 animate-pulse rounded-xl bg-night-field" />
+        <div className="mt-8 h-3 w-24 animate-pulse rounded bg-night-line/60" />
+        <div className="mt-4 h-16 animate-pulse rounded-xl bg-night-field" />
+        <div className="mt-4 h-28 animate-pulse rounded-xl bg-night-field" />
+        <div className="mt-8 h-11 w-44 animate-pulse rounded-lg bg-night-line/60" />
       </div>
     ),
   },

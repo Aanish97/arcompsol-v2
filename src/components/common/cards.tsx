@@ -42,7 +42,7 @@ export function ValueCard({
     <Card
       className={cn(
         "relative h-full gap-0 overflow-hidden rounded-2xl border-border p-8",
-        "shadow-[0_8px_32px_rgb(var(--shadow-tint)/0.08)] transition-[transform,box-shadow] duration-300",
+        "shadow-[0_8px_32px_rgb(var(--shadow-tint)/0.08)] transition-[transform,box-shadow] duration-220 ease-out",
         "hover:-translate-y-2 hover:shadow-[0_16px_48px_rgb(var(--shadow-tint)/0.14)]",
         featured
           ? "border-transparent bg-gradient-to-br from-brand-dark to-brand-navy"
@@ -59,7 +59,7 @@ export function ValueCard({
         <h3
           className={cn(
             "mb-4 leading-snug",
-            featured ? "text-2xl text-white md:text-3xl" : "text-ink",
+            featured ? "text-2xl text-on-dark md:text-3xl" : "text-ink",
           )}
         >
           {heading}
@@ -67,7 +67,7 @@ export function ValueCard({
         <p
           className={cn(
             "measure text-[0.95rem] leading-relaxed",
-            featured ? "text-base text-white/75" : "text-ink-soft",
+            featured ? "text-base text-on-dark-soft" : "text-ink-soft",
           )}
         >
           {description}
@@ -95,15 +95,29 @@ export function JobCard({
     // "Apply now" out of line with the others. The flex-1 on the description
     // below can only push the button to the bottom of a card that has a
     // bottom to be pushed to.
-    <Card className="flex h-full flex-col gap-0 rounded-2xl border-border p-6 transition-[transform,border-color,box-shadow] duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-[0_12px_32px_rgb(var(--shadow-tint)/0.12)]">
+    <Card className="flex h-full flex-col gap-0 rounded-2xl border-border p-6 transition-[transform,border-color,box-shadow] duration-220 ease-out hover:-translate-y-1 hover:border-brand/40 hover:shadow-[0_12px_32px_rgb(var(--shadow-tint)/0.12)]">
       <CardContent className="flex flex-1 flex-col p-0">
         <h3 className="text-xl font-semibold text-ink">{title}</h3>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-ink-soft">
-          <span className="rounded-full bg-secondary px-3 py-1">{team}</span>
-          <span className="rounded-full bg-secondary px-3 py-1">
-            {location}
-          </span>
-        </div>
+        {/* A META LINE, NOT PILLS. Two rounded chips is the same badge shape
+            the careers hero just lost, and repeating it six times across a grid
+            is what makes a page look assembled from a component library rather
+            than designed. A hairline between two words does the same job — it
+            separates them — using the rule device the rest of this site already
+            speaks in.
+
+            BLUE because these are FACTS ABOUT the job, not things you can do
+            with it. Green on this site means "you can act on this": buttons,
+            links, focus, hover. Metadata in the same green makes the reader
+            work out which greens are clickable. 6.38:1 on --surface.
+
+            Uppercase needs the tracking — capitals have no ascenders or
+            descenders to tell their shapes apart at 12px. */}
+        <p className="mt-2 flex items-center gap-2.5 text-xs font-semibold tracking-[0.1em] text-brand-blue uppercase">
+          <span>{team}</span>
+          <span aria-hidden className="h-3 w-px bg-brand-blue/30" />
+          <span>{location}</span>
+        </p>
+
         <p className="mt-4 flex-1 text-sm leading-relaxed text-ink-muted">
           {description}
         </p>
@@ -115,9 +129,15 @@ export function JobCard({
         >
           {/* mailto rather than an onClick that console.logs, which is what the
               original did — the button looked live and did nothing. */}
+          {/* NO className. `Button asChild` renders through Radix Slot, which
+              CONCATENATES the child's classes with the button's rather than
+              running them through tailwind-merge — so anything set here lands
+              ALONGSIDE the base instead of replacing it. This carried
+              `rounded-lg focus-ring`: the first was already on the base (it
+              shipped twice in the HTML), and the second would now paint a
+              second focus outline over the one the base draws. */}
           <a
             href={`mailto:careers@arcompsol.com?subject=Application: ${title}`}
-            className="rounded-lg focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none"
           >
             Apply now
           </a>

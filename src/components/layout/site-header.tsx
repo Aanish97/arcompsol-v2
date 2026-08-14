@@ -109,11 +109,11 @@ function NavLink({
         // every item in the primary nav — including the only CTA in the header
         // — was under the touch minimum. inline-flex + items-center keeps the
         // label optically centred while the box grows to meet it.
-        "relative inline-flex min-h-11 min-w-11 items-center transition-colors duration-300",
+        "relative inline-flex min-h-11 min-w-11 items-center transition-colors duration-220 ease-out",
         // Brand ring, not the UA default. Nothing here removed the outline, so
         // focus WAS visible — it just did not match the ring every other
         // control on the site uses, which reads as an untouched corner.
-        "focus-visible:rounded-lg focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none",
+        "focus-ring",
 
         sheet
           ? // A ROW, not a tab: full width, left-aligned, 48px tall. A finger
@@ -124,7 +124,7 @@ function NavLink({
 
         item.highlight
           ? cn(
-              "bg-brand font-medium text-white",
+              "bg-brand font-medium text-on-brand",
               sheet
                 ? // Squarer and shadowed, so the one action in the panel sits
                   // forward of the flat rows above it rather than reading as
@@ -246,7 +246,7 @@ export function SiteHeader() {
       : pathname === item.href && !activeTab;
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-black/6 bg-white">
+    <header className="sticky top-0 z-50 w-full border-b border-border bg-surface">
       {/* max-w-6xl + px-6 to MATCH Section width="wide" and the footer. This was
           max-w-5xl/px-5, so above 1152px the logo sat 64px inside the left edge
           of the headline directly beneath it, and 4px off on mobile. Nothing
@@ -264,14 +264,20 @@ export function SiteHeader() {
             by 14px and wraps the nav to two lines. At 768px there is 98px of
             slack. Below md the hamburger covers it. Re-measure if either the
             mark or the nav labels grow. */}
-        <nav className="hidden items-center gap-6 md:flex md:gap-8">
-          {items.map((item) => (
-            <NavLink
-              key={item.href}
-              item={item}
-              isActive={isItemActive(item)}
-            />
-          ))}
+        {/* aria-label because THERE ARE TWO <nav>s in this header — this one
+            and the one inside the sheet. Unnamed, assistive tech lists them as
+            "navigation" and "navigation" and neither can be told from the
+            other. The layout classes move to the <ul>; the <nav> keeps only
+            the breakpoint switch, or `hidden md:flex` would be fighting a
+            child that is now doing the flexing. */}
+        <nav aria-label="Primary" className="hidden md:block">
+          <ul className="flex items-center gap-6 md:gap-8">
+            {items.map((item) => (
+              <li key={item.href}>
+                <NavLink item={item} isActive={isItemActive(item)} />
+              </li>
+            ))}
+          </ul>
         </nav>
 
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -316,21 +322,32 @@ export function SiteHeader() {
                 the only thing on screen, and a quiet caption over them gives
                 the panel a top edge to start reading from instead of four
                 links floating under a rule. */}
-            <nav className="flex flex-col gap-1 px-3 pt-5 pb-3">
-              <p className="px-4 pb-2 text-[0.6875rem] font-semibold tracking-[0.12em] text-ink-muted uppercase">
+            {/* Named by the caption it already had, rather than by a second
+                hand-written aria-label that would drift from it. */}
+            <nav
+              aria-labelledby="sheet-menu-caption"
+              className="flex flex-col gap-1 px-3 pt-5 pb-3"
+            >
+              <p
+                id="sheet-menu-caption"
+                className="px-4 pb-2 text-[0.6875rem] font-semibold tracking-[0.12em] text-ink-muted uppercase"
+              >
                 Menu
               </p>
-              {items
-                .filter((item) => !item.highlight)
-                .map((item) => (
-                  <NavLink
-                    key={item.href}
-                    item={item}
-                    isActive={isItemActive(item)}
-                    onNavigate={() => setIsOpen(false)}
-                    variant="sheet"
-                  />
-                ))}
+              <ul className="flex flex-col gap-1">
+                {items
+                  .filter((item) => !item.highlight)
+                  .map((item) => (
+                    <li key={item.href}>
+                      <NavLink
+                        item={item}
+                        isActive={isItemActive(item)}
+                        onNavigate={() => setIsOpen(false)}
+                        variant="sheet"
+                      />
+                    </li>
+                  ))}
+              </ul>
             </nav>
 
             {/* The CTA is lifted out of the row list and given the full width.
@@ -362,51 +379,59 @@ export function SiteHeader() {
                 Get in touch
               </p>
 
-              <div className="mt-2 flex flex-col">
-                <a
-                  href={`mailto:${CONTACT.email}`}
-                  className="group/row -mx-2 flex min-h-11 items-center gap-3 rounded-lg px-2 text-sm text-ink-soft transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
-                >
-                  {/* A tinted tile rather than a bare glyph: at 14px an icon
-                      on its own reads as a bullet, and the tile gives the two
-                      rows a shared left edge for the labels to hang off. */}
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand transition-colors group-hover/row:bg-brand group-hover/row:text-white">
-                    <Mail className="size-4" />
-                  </span>
-                  <span className="truncate">{CONTACT.email}</span>
-                </a>
-                <a
-                  href={`tel:${CONTACT.phone.replace(/\s/g, "")}`}
-                  className="group/row -mx-2 flex min-h-11 items-center gap-3 rounded-lg px-2 text-sm text-ink-soft transition-colors hover:text-brand focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
-                >
-                  <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand transition-colors group-hover/row:bg-brand group-hover/row:text-white">
-                    <Phone className="size-4" />
-                  </span>
-                  <span className="truncate">{CONTACT.phone}</span>
-                </a>
-              </div>
+              {/* Two ways to reach the same company — a list, so it is
+                  announced as "list, 2 items" rather than as two links that
+                  happen to sit near each other. */}
+              <ul className="mt-2 flex flex-col">
+                <li>
+                  <a
+                    href={`mailto:${CONTACT.email}`}
+                    className="group/row -mx-2 flex min-h-11 items-center gap-3 rounded-lg px-2 text-sm text-ink-soft transition-colors hover:text-brand focus-ring"
+                  >
+                    {/* A tinted tile rather than a bare glyph: at 14px an icon
+                        on its own reads as a bullet, and the tile gives the two
+                        rows a shared left edge for the labels to hang off. */}
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand transition-colors group-hover/row:bg-brand group-hover/row:text-on-brand">
+                      <Mail className="size-4" />
+                    </span>
+                    <span className="truncate">{CONTACT.email}</span>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href={`tel:${CONTACT.phone.replace(/\s/g, "")}`}
+                    className="group/row -mx-2 flex min-h-11 items-center gap-3 rounded-lg px-2 text-sm text-ink-soft transition-colors hover:text-brand focus-ring"
+                  >
+                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand transition-colors group-hover/row:bg-brand group-hover/row:text-on-brand">
+                      <Phone className="size-4" />
+                    </span>
+                    <span className="truncate">{CONTACT.phone}</span>
+                  </a>
+                </li>
+              </ul>
 
               {/* The same two socials the footer carries. The footer is the
                   only other place they live, and it is a long scroll away from
                   an open nav panel. */}
-              <div className="mt-4 flex items-center gap-2 border-t border-border pt-4">
+              <ul className="mt-4 flex items-center gap-2 border-t border-border pt-4">
                 {SOCIAL_LINKS.map((social) => {
                   const Icon =
                     SOCIAL_ICONS[social.label as keyof typeof SOCIAL_ICONS];
                   return (
-                    <a
-                      key={social.label}
-                      href={social.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={social.label}
-                      className="flex size-11 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-brand/10 hover:text-brand focus-visible:ring-2 focus-visible:ring-brand focus-visible:outline-none"
-                    >
-                      <Icon className="size-4.5" />
-                    </a>
+                    <li key={social.label}>
+                      <a
+                        href={social.href}
+                        target="_blank"
+                        rel="noreferrer"
+                        aria-label={social.label}
+                        className="flex size-11 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-brand/10 hover:text-brand focus-ring"
+                      >
+                        <Icon className="size-4.5" />
+                      </a>
+                    </li>
                   );
                 })}
-              </div>
+              </ul>
             </div>
           </SheetContent>
         </Sheet>

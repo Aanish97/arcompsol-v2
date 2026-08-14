@@ -27,6 +27,7 @@
 import type { Metadata } from "next";
 import { Open_Sans, Poppins } from "next/font/google";
 
+import { BandOrderCheck } from "@/components/dev/band-check";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Toaster } from "@/components/ui/sonner";
@@ -138,9 +139,30 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Scroll-reveal starts elements hidden and JavaScript reveals them. If
             the bundle is blocked, fails, or is still loading, this is what stops
             the page rendering blank. It is the difference between a degraded
-            experience and no experience. */}
+            experience and no experience.
+
+            FOUR MECHANISMS, ALL LISTED. [data-reveal] is the general scroll
+            reveal; .pop-item is the services grid, whose cards are released by
+            JavaScript; .wordmark-word is the last two words of the services
+            heading, which the keyboard animation delivers (both in
+            services-grid.tsx). Add any future hidden-until-scrolled state here
+            in the same change that introduces it — the failure is silent and
+            only shows up with the bundle blocked.
+
+            The wordmark matters most of the four: without this rule the
+            services heading reads "Services we provide" and stops, losing the
+            half of the sentence the animation was going to deliver.
+
+            [data-spine-line] is the fourth and it is the odd one out — it hides
+            with `stroke-dashoffset`, not with opacity or a transform, so it
+            needs its own declaration rather than joining the list above. It is
+            the process timeline's drawn line (common/milestone-spine.tsx),
+            which anime.js draws on scroll and which is therefore blank when no
+            script runs. The gradient track underneath is a plain element and is
+            unaffected either way, so this is the difference between a finished
+            spine and a slightly quieter one — not between a spine and nothing. */}
         <noscript>
-          <style>{`[data-reveal]{opacity:1 !important;transform:none !important}`}</style>
+          <style>{`[data-reveal],.pop-item,.wordmark-word{opacity:1 !important;transform:none !important}[data-spine-line]{stroke-dashoffset:0 !important}`}</style>
         </noscript>
       </head>
       <body className="flex min-h-full flex-col">
@@ -151,7 +173,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             users nothing and is the first stop for everyone else. */}
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-100 focus:rounded-lg focus:bg-brand focus:px-4 focus:py-2 focus:font-medium focus:text-white"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-100 focus:rounded-lg focus:bg-brand focus:px-4 focus:py-2 focus:font-medium focus:text-on-brand"
         >
           Skip to content
         </a>
@@ -164,6 +186,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         </main>
         <SiteFooter />
         <Toaster position="top-center" richColors />
+        {/* Development-only, renders nothing, ships nothing. It warns when two
+            touching bands share a ground — a mistake this project has made
+            three times because band order is a property of the PAGE while the
+            ground is chosen per SECTION, in six places, two of them shared
+            across routes. See components/dev/band-check.tsx. */}
+        {process.env.NODE_ENV !== "production" && <BandOrderCheck />}
       </body>
     </html>
   );

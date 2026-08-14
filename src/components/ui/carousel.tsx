@@ -58,14 +58,48 @@ function Carousel({
     },
     plugins,
   );
-  const [canScrollPrev, setCanScrollPrev] = React.useState(false);
-  const [canScrollNext, setCanScrollNext] = React.useState(false);
+  /**
+   * EMBLA IS AN EXTERNAL STORE, SO IT IS READ AS ONE.
+   *
+   * This was two `useState`s fed by an effect that called `onSelect(api)`
+   * synchronously in its body to seed them. That is the thing
+   * `react-hooks/set-state-in-effect` exists to catch: the component rendered
+   * once with `false, false`, the effect then set the real values, and every
+   * carousel paid a second render on mount and on every reInit.
+   *
+   * `useSyncExternalStore` is the shape this always was — subscribe to a
+   * source React does not own, read its current value on demand. No seeding
+   * step, so no cascading render, and the arrows are correct on the very first
+   * paint rather than one frame later.
+   *
+   * The old cleanup also only detached `select` and left `reInit` attached,
+   * which leaked a listener per remount. Both come off here.
+   */
+  const subscribe = React.useCallback(
+    (onStoreChange: () => void) => {
+      if (!api) return () => {};
+      api.on("select", onStoreChange);
+      api.on("reInit", onStoreChange);
+      return () => {
+        api.off("select", onStoreChange);
+        api.off("reInit", onStoreChange);
+      };
+    },
+    [api],
+  );
 
-  const onSelect = React.useCallback((api: CarouselApi) => {
-    if (!api) return;
-    setCanScrollPrev(api.canScrollPrev());
-    setCanScrollNext(api.canScrollNext());
-  }, []);
+  // Booleans, so React's own Object.is check settles it — no memoised
+  // snapshot object is needed and none should be added.
+  const canScrollPrev = React.useSyncExternalStore(
+    subscribe,
+    () => api?.canScrollPrev() ?? false,
+    () => false,
+  );
+  const canScrollNext = React.useSyncExternalStore(
+    subscribe,
+    () => api?.canScrollNext() ?? false,
+    () => false,
+  );
 
   const scrollPrev = React.useCallback(() => {
     api?.scrollPrev();
@@ -93,16 +127,6 @@ function Carousel({
     setApi(api);
   }, [api, setApi]);
 
-  React.useEffect(() => {
-    if (!api) return;
-    onSelect(api);
-    api.on("reInit", onSelect);
-    api.on("select", onSelect);
-
-    return () => {
-      api?.off("select", onSelect);
-    };
-  }, [api, onSelect]);
 
   return (
     <CarouselContext.Provider

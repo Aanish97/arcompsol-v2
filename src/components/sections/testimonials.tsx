@@ -37,6 +37,7 @@ import { useEffect, useState } from "react";
 import { CarouselAutoplay } from "@/components/common/carousel-autoplay";
 import { CarouselControls } from "@/components/common/carousel-controls";
 import { ExpandableQuote } from "@/components/common/expandable-quote";
+import { Monogram } from "@/components/common/monogram";
 import { Reveal } from "@/components/common/reveal";
 import {
   Section,
@@ -71,18 +72,20 @@ export function Testimonials() {
   const [api, setApi] = useState<CarouselApi>();
 
   /**
-   * WHICH quote is expanded, or null. One value, because three behaviours read
-   * it and they must agree:
+   * WHICH quote is expanded, or null. One value, because two behaviours read it
+   * and they must agree:
    *
    *   - the quote itself renders clamped or full;
-   *   - autoplay holds while anything is open, so the carousel never moves out
-   *     from under someone who is mid-sentence;
    *   - it clears on slide change, because the slides are a flex row and all
    *     take the height of the tallest — one open quote leaves every other
    *     slide stretched with a slab of empty space under its text (measured at
    *     390px: 354px collapsed, 514px with one open).
    *
-   * Held here rather than inside each quote so autoplay can see it at all.
+   * It USED to have a third reader: autoplay held while a quote was open, so
+   * the carousel could not move out from under someone mid-sentence. There is
+   * no autoplay now (see the call site below), so that reason is gone — but the
+   * height problem above is not, and it is why this still lives here rather
+   * than inside each quote.
    */
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
 
@@ -96,17 +99,23 @@ export function Testimonials() {
   }, [api]);
 
   return (
-    <Section width="wide" className="bg-surface">
+    <Section
+      aria-labelledby="testimonials-heading"
+      width="wide"
+      className="bg-surface"
+    >
       <div className="w-full max-w-4xl">
         <Reveal className="flex w-full flex-col items-start">
           {/* The reference this was built from showed the label in a bright
               teal. It is --brand deep forest instead, on purpose: at 12px the
               eyebrow counts as small text, which WCAG holds to 4.5:1, and the
               bright greens in this brand do not reach it on paper — the logo
-              green measures 2.59:1 on --surface. --brand measures 7.19:1 here.
+              green measures 2.62:1 on --surface. --brand measures 8.36:1 here.
               Measured, not estimated. Do not swap it for a lighter green. */}
-          <SectionEyebrow>{TESTIMONIALS_SECTION.eyebrow}</SectionEyebrow>
-          <SectionHeading align="start">
+          <SectionEyebrow align="start">
+            {TESTIMONIALS_SECTION.eyebrow}
+          </SectionEyebrow>
+          <SectionHeading id="testimonials-heading" align="start">
             {TESTIMONIALS_SECTION.title}
           </SectionHeading>
         </Reveal>
@@ -124,7 +133,12 @@ export function Testimonials() {
           <CarouselContent>
             {TESTIMONIALS.map((testimonial, index) => (
               <CarouselItem key={testimonial.name}>
-                <Card className="relative h-full overflow-hidden rounded-2xl border-border bg-surface-alt p-0">
+                {/* A shadow, so the card sits ON the band rather than being a
+                    grey rectangle cut into it. --surface-alt against the
+                    section's --surface is only 3.4 L* points; the border alone
+                    was carrying the whole separation and the card read as a
+                    fill, not an object. Same depth the services panel uses. */}
+                <Card className="relative h-full overflow-hidden rounded-2xl border-border bg-surface-alt p-0 shadow-[0_4px_24px_rgb(var(--shadow-tint)/0.06)]">
                   {/* Blockquote rule. Structural, not ornamental: it marks the
                     whole card as quoted matter and gives it an edge against
                     the white band behind it. */}
@@ -149,7 +163,13 @@ export function Testimonials() {
                     items-center while the cards showed ~20-word excerpts, where
                     the attribution column was the taller of the two. If the
                     excerpts ever come back, that swaps again. */}
-                  <CardContent className="grid gap-6 p-6 pl-8 md:p-9 md:pl-11 lg:grid-cols-[minmax(0,11rem)_minmax(0,1fr)] lg:items-start lg:gap-9">
+                  {/* 13rem, up from 11. "Executive Director @ Linux Foundation"
+                      broke across three lines in 176px — the longest and most
+                      valuable attribution on the site, set as the most awkward.
+                      208px takes it to two, and the quote column loses 32px it
+                      does not miss at a 65ch cap. Measure against the LONGEST
+                      organisation string, not the average. */}
+                  <CardContent className="grid gap-6 p-6 pl-8 md:p-9 md:pl-11 lg:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] lg:items-start lg:gap-9">
                     {/* <figure> is what makes <figcaption> legal — a
                           figcaption with no figure ancestor is invalid and
                           lands nowhere in the accessibility tree. `lg:contents`
@@ -157,18 +177,45 @@ export function Testimonials() {
                           the quote are the grid's own children. */}
                     <figure className="grid gap-6 lg:contents">
                       <figcaption className="flex items-center gap-4 lg:flex-col lg:items-start lg:gap-3">
-                        <Image
-                          src={testimonial.avatar}
-                          alt=""
-                          width={56}
-                          height={56}
-                          className="size-12 shrink-0 rounded-full object-cover ring-2 ring-brand/20 lg:size-16"
-                        />
+                        {/* A PORTRAIT WHERE WE HAVE ONE, INITIALS WHERE WE DO
+                            NOT. Two of these five used to point at a shared
+                            Placeholder.png — a generic silhouette beside the
+                            real name and real employer of a real person, on the
+                            one section of the site whose entire job is
+                            credibility.
+
+                            width/height raised to 64 to match the rendered
+                            lg:size-16. At 56 the browser was upscaling a 56px
+                            source into a 64px box on every desktop view — the
+                            one image on this card, and it was the soft one.
+                            A ring plus an offset in the card's own colour, so
+                            the portrait reads as inset into the card rather
+                            than pasted onto it; <Monogram> repeats that ring
+                            verbatim so the two sit identically in the row. */}
+                        {testimonial.avatar ? (
+                          <Image
+                            src={testimonial.avatar}
+                            alt=""
+                            width={64}
+                            height={64}
+                            className="size-12 shrink-0 rounded-full object-cover ring-2 ring-brand/25 ring-offset-2 ring-offset-surface-alt lg:size-16"
+                          />
+                        ) : (
+                          <Monogram name={testimonial.name} />
+                        )}
                         <div>
-                          <p className="font-semibold text-ink">
+                          {/* font-heading: this is the name of a real person at
+                              a named company and it is the strongest asset on
+                              the page. It was set in body weight at body size,
+                              indistinguishable from the role beneath it. */}
+                          <p className="font-heading text-base font-semibold text-ink">
                             {testimonial.name}
                           </p>
-                          <p className="mt-0.5 text-sm text-ink-soft">
+                          {/* --ink-muted, not --ink-soft, and leading-snug: the
+                              role is support for the name, and at the same
+                              colour the two lines competed. 5.83:1 on
+                              --surface, comfortably past AA. */}
+                          <p className="mt-1 text-sm leading-snug text-ink-muted">
                             {testimonial.organization}
                           </p>
                         </div>
@@ -180,8 +227,8 @@ export function Testimonials() {
                           cards showed ~20-word excerpts, where the quote was a
                           pull quote and had to carry the band. At full length
                           that size is a wall of 20px text six lines deep. Kept
-                          at --ink-soft (9.84:1) rather than the original
-                          --ink-muted (6.90:1): both pass, and six sentences are
+                          at --ink-soft (9.88:1) rather than the original
+                          --ink-muted (5.83:1): both pass, and six sentences are
                           worth the extra contrast.
 
                           CLAMPED ON PHONES. At 390px the full quote runs about
@@ -214,15 +261,25 @@ export function Testimonials() {
               </CarouselItem>
             ))}
           </CarouselContent>
-          <CarouselAutoplay interval={6000} paused={expandedIndex !== null} />
-          {/* No `pausable`: the play/pause button is removed by owner decision
-              (2026-08-12). Autoplay still stops on hover, focus, drag, when the
-              section is off-screen, when the tab is hidden, and under
-              prefers-reduced-motion — see carousel-autoplay.tsx. Note this
-              leaves no explicit pause control for a 6s auto-advance, which is
-              what WCAG 2.2.2 asks for; the focus-stop is the closest thing that
-              remains. Restore `pausable` to put it back. */}
-          <CarouselControls label="testimonial" />
+          {/* 7s, at the owner's request (2026-08-13).
+
+              `pausable` COMES WITH IT AND IS NOT OPTIONAL — see WCAG 2.2.2 in
+              carousel-controls.tsx. The timer and the button are one decision.
+
+              KNOW THE TRADE. These quotes run 61-80 words: 18-24 seconds of
+              reading at 200wpm, against a 7s interval. A reader who is neither
+              hovering nor focused — which is most touch readers — will lose a
+              quote about a third of the way in. That is the cost of a timer on
+              this content and it cannot be tuned away at any interval short of
+              ~20s; the three mitigations are the hover/focus stop, the pause
+              button, and `paused` below, which holds while a quote is expanded
+              so nobody is moved off a sentence they just opened.
+
+              If the quotes are ever shortened, revisit this. Do not shorten
+              them TO suit it — they are attributed statements by named people
+              (see content/testimonials.ts). */}
+          <CarouselAutoplay interval={7000} paused={expandedIndex !== null} />
+          <CarouselControls label="testimonial" pausable />
         </Carousel>
       </div>
     </Section>

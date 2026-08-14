@@ -59,9 +59,9 @@ import "react-phone-number-input/style.css";
 
 /** Fields sit on the navy panel, so they are lifted out of it rather than drawn on it. */
 const FIELD = cn(
-  "h-11 rounded-xl border-white/12 bg-white/6 px-4 text-white placeholder:text-white/35",
+  "h-11 rounded-xl border-night-line bg-night-field px-4 text-on-dark placeholder:text-on-dark-muted/70",
   "transition-colors focus-visible:border-brand focus-visible:ring-brand/30",
-  "aria-invalid:border-red-400/60 aria-invalid:ring-red-400/20",
+  "aria-invalid:border-danger-on-dark/70 aria-invalid:ring-danger-on-dark/25",
 );
 
 /**
@@ -118,7 +118,7 @@ function Field({
     <div className={cn("flex flex-col gap-2", className)}>
       <label
         htmlFor={id}
-        className="text-xs font-medium tracking-wide text-white/55"
+        className="text-xs font-medium tracking-wide text-on-dark-muted"
       >
         {label}
       </label>
@@ -129,7 +129,7 @@ function Field({
         "aria-required": true,
       })}
       {error && (
-        <span id={errorId} role="alert" className="text-xs text-red-300">
+        <span id={errorId} role="alert" className="text-xs text-danger-on-dark">
           {error}
         </span>
       )}
@@ -166,7 +166,7 @@ function BodyCounter({ control }: { control: Control<ContactInput> }) {
       // polite, not assertive: it updates on every keystroke near the limit
       // and must not interrupt what is being typed.
       aria-live="polite"
-      className="text-xs tabular-nums text-white/55"
+      className="text-xs tabular-nums text-on-dark-muted"
     >
       {value.length.toLocaleString()} / {BODY_MAX.toLocaleString()} characters
     </p>
@@ -254,7 +254,7 @@ export function ContactForm() {
       // "Your details" label sat at y=33, behind the header. 80px matches the
       // scroll-mt-20 already on #services and the two careers anchors; keep
       // them equal, and above the header height on every breakpoint.
-      className="w-full max-w-xl scroll-mt-20 rounded-2xl border border-white/10 bg-white/[0.03] p-6 md:p-8"
+      className="w-full max-w-xl scroll-mt-20 rounded-2xl border border-night-line bg-night-alt p-6 md:p-8"
     >
       <fieldset className="flex flex-col gap-4" disabled={isSubmitting}>
         <GroupLabel>Your details</GroupLabel>
@@ -355,7 +355,7 @@ export function ContactForm() {
                     // with no focus ring and no error state.
                     "focus-within:border-brand focus-within:ring-3 focus-within:ring-brand/30",
                     fieldState.invalid &&
-                      "border-red-400/60 ring-3 ring-red-400/20",
+                      "border-danger-on-dark/70 ring-3 ring-danger-on-dark/25",
 
                     // The number input.
                     // min-h-11 on the INPUT itself. It rendered 24px tall inside
@@ -363,8 +363,8 @@ export function ContactForm() {
                     // of the surrounding <label> — restructure that label and the
                     // target silently becomes 24px. Stated here instead.
                     "[&_.PhoneInputInput]:min-h-11",
-                    "[&_.PhoneInputInput]:bg-transparent [&_.PhoneInputInput]:text-white",
-                    "[&_.PhoneInputInput]:outline-none [&_.PhoneInputInput]:placeholder:text-white/35",
+                    "[&_.PhoneInputInput]:bg-transparent [&_.PhoneInputInput]:text-on-dark",
+                    "[&_.PhoneInputInput]:outline-none [&_.PhoneInputInput]:placeholder:text-on-dark-muted/70",
                     // min-w-0, or this row cannot shrink below 265px and drags the
                     // whole document sideways at 320px. A flex item defaults to
                     // `min-width: auto`, which on an <input> resolves to its
@@ -469,7 +469,11 @@ export function ContactForm() {
         variant="brand"
         size="brand"
         disabled={isSubmitting}
-        className="group mt-8 w-full sm:w-auto"
+        // focus-ring-dark, not the base focus-ring: this button sits on the
+        // navy form panel, and the outline is painted OUTSIDE the button, on
+        // --night-alt. --brand on that ground is 1.4:1; --brand-on-dark is
+        // 5.71:1.
+        className="group mt-8 w-full sm:w-auto focus-ring-dark"
       >
         {isSubmitting ? (
           <>

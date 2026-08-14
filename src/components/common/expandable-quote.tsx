@@ -108,7 +108,7 @@ export function ExpandableQuote({
           type="button"
           onClick={onToggle}
           aria-expanded={expanded}
-          className="mt-3 inline-flex min-h-11 items-center rounded-md text-sm font-medium text-brand transition-colors hover:text-brand-deep focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none md:hidden"
+          className="mt-3 inline-flex min-h-11 items-center rounded-md text-sm font-medium text-brand transition-colors hover:text-brand-deep focus-ring md:hidden"
         >
           {expanded ? "Show less" : "Read more"}
         </button>

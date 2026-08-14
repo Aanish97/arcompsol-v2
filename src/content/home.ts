@@ -101,8 +101,19 @@ export const SERVICES = [
   },
 ];
 
+/**
+ * ONE SENTENCE, SPLIT ACROSS TWO FIELDS: "Services we provide" + "at
+ * Arcompsol". Read them together and change them together.
+ *
+ * The split exists because the second half is DELIVERED BY THE KEYBOARD. It is
+ * the word the animation types out, and it flies into the heading when the
+ * board clears (sections/services-grid.tsx). The heading is complete in the
+ * server HTML either way — a crawler, reader mode and a blocked bundle all get
+ * the whole sentence; only the arrival is animated.
+ */
 export const SERVICES_SECTION = {
-  title: "Services we provide",
+  titleLead: "Services we provide",
+  titleWord: "at Arcompsol",
   description:
     "When it comes to design, our approach is simple: Everything is Human-centric, be it UI or UX",
 };

@@ -31,16 +31,31 @@ export const VALUES = [
     description:
       "We say what we mean, directly, candidly, and sincerely, but always with empathy and respect.",
   },
+  /**
+   * THESE TWO ARE STILL OURS, NOT THE OWNER'S — read them before a launch.
+   *
+   * They were written here as drafts and marked as such. The 2026-08-14 audit
+   * pulled the marker up as a finding: two of five stated company values were
+   * in the writer's words rather than the owner's, and they read well enough
+   * that nobody would notice. The wording below is a craft pass over those
+   * drafts — the rhythm of the three above, no claim added or removed — which
+   * fixes how they read but NOT whose words they are.
+   *
+   * The three values above came from the owner. Replace these two with his
+   * wording and delete this block; that is the only thing that closes it.
+   */
   {
     heading: "Ownership",
-    // DRAFT — pending the owner's own wording.
+    // "outcome, not the task" mirrors "what we mean" / "with empathy" above:
+    // each value names the easy version and then the one we hold to.
     description:
-      "We take responsibility for the outcome, not just the task, and we fix what is ours without waiting to be asked.",
+      "We own the outcome, not just the task, and we fix what is ours before anyone has to ask.",
   },
   {
     heading: "Commitment",
-    // DRAFT — pending the owner's own wording.
+    // The original ran two clauses to say one thing. The difficult part IS the
+    // commitment, so the sentence ends on it.
     description:
-      "We finish what we start, and we stay with a project through its difficult parts rather than handing it back.",
+      "We finish what we start, and we stay through the part of a project that is hard.",
   },
 ];

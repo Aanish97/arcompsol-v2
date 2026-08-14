@@ -38,6 +38,7 @@ import { Fragment } from "react";
 export function StaggerText({
   text,
   offset = 0,
+  className = "stagger-word",
 }: {
   text: string;
   /**
@@ -46,6 +47,19 @@ export function StaggerText({
    * words restart at 0 and fire on top of the opening words.
    */
   offset?: number;
+  /**
+   * Which rule set drives the words. Defaults to `.stagger-word`, the scroll
+   * reveal keyed off `[data-reveal]`.
+   *
+   * IT IS A PROP BECAUSE THE CASCADE LEAVES NO ALTERNATIVE. The services
+   * heading's last words are released by the keyboard animation rather than by
+   * scroll, and `[data-reveal="shown"] .stagger-word` is declared OUTSIDE any
+   * `@layer` — unlayered styles beat layered ones no matter the source order,
+   * so a rule added in `@layer components` to hold those words back could never
+   * win against it. A separate class sidesteps the conflict entirely instead of
+   * fighting it with specificity. See `.wordmark-word` in globals.css.
+   */
+  className?: string;
 }) {
   const words = text.split(" ");
 
@@ -54,7 +68,7 @@ export function StaggerText({
       {words.map((word, index) => (
         <Fragment key={`${word}-${index}`}>
           <span
-            className="stagger-word"
+            className={className}
             style={{ "--word": offset + index } as React.CSSProperties}
           >
             {word}

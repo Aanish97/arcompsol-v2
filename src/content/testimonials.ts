@@ -21,17 +21,38 @@
  * to be matched exactly, which is the sort of thing that quietly spreads.
  * Testimonial text and attributions are otherwise unchanged.
  */
+import type { StaticImageData } from "next/image";
+
 import lanceKohler from "@/assets/Lance_Kohler.jpeg";
 import loganWeaver from "@/assets/Logan_Weaver.png";
-import placeholder from "@/assets/Placeholder.png";
 import sumerJohal from "@/assets/Sumer_Johal.png";
+
+/**
+ * `avatar: null` means WE DO NOT HAVE A PHOTO OF THIS PERSON, and the card
+ * draws their initials instead (see common/monogram.tsx).
+ *
+ * It is null rather than a shared placeholder image on purpose. Two of these
+ * five pointed at one `Placeholder.png` — a generic silhouette beside the real
+ * name and real company of a real person, which is the quiet kind of wrong that
+ * survives review precisely because it looks consistent. The 2026-08-14 audit
+ * flagged it as the site's only P1.
+ *
+ * Drop a real photo in and set it here; nothing else has to change.
+ */
+type Testimonial = {
+  avatar: StaticImageData | null;
+  name: string;
+  organization: string;
+  social: string;
+  text: string;
+};
 
 export const TESTIMONIALS_SECTION = {
   eyebrow: "Testimonials",
   title: "Client Testimonials",
 };
 
-export const TESTIMONIALS = [
+export const TESTIMONIALS: Testimonial[] = [
   {
     avatar: loganWeaver,
     name: "Logan Weaver",
@@ -54,14 +75,14 @@ export const TESTIMONIALS = [
     text: "Very talented developers and hard workers. They always give 100% and anytime I've needed their help, They have been there to assist. They participated in the backend development (and some front end as well) of our SaaS and I'll always be grateful to have discovered Arcompsol. I highly recommend them to any future employer that needs a high-quality, hard-working software developer.",
   },
   {
-    avatar: placeholder,
+    avatar: null,
     name: "Omer Erdogan",
     organization: "Owner of Glorvia",
     social: "",
     text: "I’ve had the pleasure of collaborating with Arcompsol on a few critical projects, and every time they exceeded expectations. Their ability to handle challenging technical requirements while maintaining clear and consistent communication sets them apart. The team is detail-oriented, creative, and always willing to go the extra mile to ensure success. I would recommend them without hesitation to anyone looking for dependable and highly skilled developers.",
   },
   {
-    avatar: placeholder,
+    avatar: null,
     name: "Abrar Akhtar",
     organization: "Founder of Gitscore & Onbench",
     social: "",
