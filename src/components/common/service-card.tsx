@@ -88,6 +88,7 @@
 import Image, { type StaticImageData } from "next/image";
 import { useEffect, useRef, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
@@ -287,8 +288,9 @@ export function ServiceCard({
   }
 
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       onPointerEnter={() => canHover.current && setFlipped(true)}
       onPointerLeave={() => canHover.current && setFlipped(false)}
       // Only where hover does not exist. On a mouse the pointer handlers own
@@ -305,13 +307,35 @@ export function ServiceCard({
       onBlur={() => setFlipped(false)}
       aria-expanded={flipped}
       data-flipped={flipped}
+      // aria-haspopup="false" IS LOAD-BEARING, and it is not decoration.
+      // The Button base carries `active:not-aria-[haspopup]:translate-y-px`,
+      // which compiles to `:active:not([aria-haspopup])` — HIGHER SPECIFICITY
+      // than this card's own `active:translate-y-0`, so it would win and the
+      // card would press 1px DOWN instead of settling back to rest from its
+      // hover lift. Declaring the attribute takes this element out of that
+      // selector. The value is also simply true: a flip card opens no popup.
+      aria-haspopup="false"
       className={cn(
         shell,
-        "cursor-pointer",
-        "focus-ring",
+        // ── NEUTRALISING A LABEL-SHAPED PRIMITIVE ──
+        // Button is built for "Send message". This is a 304px card holding a
+        // paragraph, so six of the base's defaults have to be undone. Every one
+        // of these is corrective; none is a style choice:
+        //   block           base is inline-flex, which centres and shrink-wraps
+        //   whitespace-normal  base is nowrap — it would put the description
+        //                      on one line and overflow the card
+        //   font-normal     base is font-medium, and the description sets no
+        //                   weight of its own, so it would inherit 500
+        //   p-0 / h-full    the size variant adds padding and a fixed height
+        //   hover:bg-transparent  `ghost` fills on hover; the faces are opaque
+        //                         at lg but this is visible below it
+        // What is gained in exchange: focus-ring and cursor-pointer, which used
+        // to be restated here, plus the disabled handling and the data-slot
+        // hooks. Converted on review, 2026-08-17.
+        "block h-full w-full p-0 font-normal whitespace-normal hover:bg-transparent",
       )}
     >
       {inner}
-    </button>
+    </Button>
   );
 }

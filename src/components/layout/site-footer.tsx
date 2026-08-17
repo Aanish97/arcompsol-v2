@@ -14,28 +14,33 @@
  * fill in a form, and a page asking to be contacted should say how to do it
  * another way.
  *
- * This is a SERVER component. Only <ContactFormLazy /> is interactive and it
- * opts into the client itself, so the addresses, link columns and icons ship as
- * HTML with no JavaScript. Marking this file "use client" would pull all of it
- * into the bundle for nothing.
+ * This is a SERVER component, and it stays one. <ContactFormLazy /> and the
+ * link columns' <SiteLink> opt into the client themselves, so the addresses,
+ * headings and icons still ship as HTML with no JavaScript — a client leaf
+ * inside a server component costs only that leaf. Marking this file
+ * "use client" would pull all of it into the bundle for nothing.
  *
- * Links go through next/link. The original called window.location.href inside
- * an onClick on top of an <a>, forcing a full document reload — losing the
- * client cache and re-downloading the app on every footer click.
+ * Route links go through SiteLink, which is next/link plus the two cases a
+ * plain one gets wrong here. The original called window.location.href inside an
+ * onClick on top of an <a>, forcing a full document reload — losing the client
+ * cache and re-downloading the app on every footer click. mailto:, tel: and the
+ * social links stay plain <a>: they leave the app entirely.
  *
  * Footer service entries with href: null render as plain text rather than
  * links, because those pages do not exist yet. See content/site.ts.
  *
  * ── DO NOT ──
- * - Do not move the #contact-form id off the form element. The "Let's Talk" nav
- *   tab scrolls to it by id from every page.
+ * - Do not move the #contact-form id back onto the <form>. This note used to
+ *   say the opposite, and the opposite was the bug: the form is inside a
+ *   next/dynamic ssr:false chunk, so an id on it is in no page's server HTML.
+ *   "Let's Talk" scrolls to it by id from every page and found nothing to
+ *   scroll to until the chunk hydrated. It belongs on the wrapper below.
  * - Do not make the phone numbers plain text. On a phone, a tel: link is the
  *   difference between one tap and copying digits by hand.
  */
-import Link from "next/link";
-
 import { BrandLogo } from "@/components/common/brand-logo";
 import { Reveal } from "@/components/common/reveal";
+import { SiteLink } from "@/components/common/site-link";
 import { StaggerText } from "@/components/common/stagger-text";
 import { InstagramIcon, LinkedInIcon } from "@/components/common/social-icons";
 import { ContactFormLazy } from "@/components/layout/contact-form-lazy";
@@ -121,7 +126,26 @@ export function SiteFooter() {
             </ul>
           </div>
 
-          <div className="flex lg:justify-end">
+          {/* THE ANCHOR LIVES HERE, ON SERVER-RENDERED MARKUP, and that is the
+              whole point. It used to sit on the <form> itself — inside a
+              next/dynamic ssr:false chunk — so it was in no page's server HTML
+              and did not exist until that chunk hydrated. Verified by curl on
+              2026-08-17: `id="contact-form"` appeared 0 times in the HTML of /,
+              /about and /careers. The chunk landed at ~1036ms, and until it did
+              `scrollToId("contact-form")` found nothing and returned silently,
+              so the site's ONE conversion CTA — the header pill on every route,
+              plus the hero button — did nothing at all for the first second of
+              every page view.
+
+              On a wrapper rather than the form so it survives the form being
+              absent, which since the visibility gate in contact-form-lazy.tsx
+              is now the normal state until someone scrolls down here.
+
+              scroll-mt-20 moved with the id, for the reason it always had: the
+              header is sticky at 73px, and without it the form lands at y=0
+              with its first label behind the header. It matches #services and
+              the careers anchors; keep all of them equal. */}
+          <div id="contact-form" className="flex scroll-mt-20 lg:justify-end">
             <ContactFormLazy />
           </div>
         </div>
@@ -129,46 +153,69 @@ export function SiteFooter() {
         <div className="mt-16 flex flex-col gap-10 border-t border-night-line pt-10 md:flex-row md:justify-between">
           <BrandLogo variant="white" />
 
-          {/* Each column is a <nav>, named by the heading it already renders.
-              These are site destinations, so they belong in the landmark list
-              a screen-reader user navigates by — and naming each one from its
-              own heading is what keeps "Company" and "Services" tellable
-              apart there. */}
+          {/* A column with links is a <nav>, named by the heading it already
+              renders. These are site destinations, so they belong in the
+              landmark list a screen-reader user navigates by — and naming each
+              one from its own heading is what keeps "Company" and "Our
+              Services" tellable apart there.
+
+              A COLUMN WITH NO LINKS IS NOT A LANDMARK. "Our Services" lists two
+              entries and both carry `href: null`, because those pages do not
+              exist yet — so it rendered as a navigation region containing two
+              <span>s and zero links. Someone navigating by landmark was offered
+              "Our Services, navigation", went there, and found nothing to
+              follow. A <nav> is a promise that there is somewhere to go; this
+              one could not keep it, so it is a plain <div> until an entry gets
+              an href, at which point it becomes a landmark again on its own.
+              The heading, the list and every pixel are identical either way. */}
           <div className="flex flex-wrap gap-12">
-            {FOOTER_SECTIONS.map((section) => (
-              <nav
-                key={section.heading}
-                aria-labelledby={`footer-${section.heading.toLowerCase().replace(/\W+/g, "-")}`}
-                className="flex flex-col gap-1"
-              >
-                <p
-                  id={`footer-${section.heading.toLowerCase().replace(/\W+/g, "-")}`}
-                  className="text-sm font-semibold tracking-wide text-on-dark"
+            {FOOTER_SECTIONS.map((section) => {
+              const headingId = `footer-${section.heading.toLowerCase().replace(/\W+/g, "-")}`;
+              const navigable = section.links.some((link) => link.href);
+              const Column = navigable ? "nav" : "div";
+
+              return (
+                <Column
+                  key={section.heading}
+                  aria-labelledby={navigable ? headingId : undefined}
+                  className="flex flex-col gap-1"
                 >
-                  {section.heading}
-                </p>
-                <ul className="flex flex-col gap-1">
-                  {section.links.map((link) => (
-                    <li key={link.label}>
-                      {link.href ? (
-                        <Link
-                          href={link.href}
-                          className="-mx-2 inline-flex min-h-11 w-fit items-center rounded-md px-2 text-sm text-on-dark-soft transition-colors hover:text-brand-on-dark focus-ring-dark"
-                        >
-                          {link.label}
-                        </Link>
-                      ) : (
-                        /* Pages that do not exist yet render as plain text
+                  <p
+                    id={headingId}
+                    className="text-sm font-semibold tracking-wide text-on-dark"
+                  >
+                    {section.heading}
+                  </p>
+                  <ul className="flex flex-col gap-1">
+                    {section.links.map((link) => (
+                      <li key={link.label}>
+                        {link.href ? (
+                          /* SiteLink, because this list points at the routes the
+                           visitor is most likely to already be on. The footer
+                           is the bottom of a ~4,650px page, so "Home" clicked
+                           from here is nearly always a same-route click — and
+                           through a plain <Link> that does nothing whatsoever.
+                           "About Us" and "Careers" had the same dead spot on
+                           their own pages. */
+                          <SiteLink
+                            href={link.href}
+                            className="-mx-2 inline-flex min-h-11 w-fit items-center rounded-md px-2 text-sm text-on-dark-soft transition-colors hover:text-brand-on-dark focus-ring-dark"
+                          >
+                            {link.label}
+                          </SiteLink>
+                        ) : (
+                          /* Pages that do not exist yet render as plain text
                            rather than as dead links. See content/site.ts. */
-                        <span className="inline-flex min-h-11 w-fit items-center text-sm text-on-dark-soft">
-                          {link.label}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            ))}
+                          <span className="inline-flex min-h-11 w-fit items-center text-sm text-on-dark-soft">
+                            {link.label}
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </Column>
+              );
+            })}
 
             <div className="flex flex-col gap-3">
               <p className="text-sm font-semibold tracking-wide text-on-dark">

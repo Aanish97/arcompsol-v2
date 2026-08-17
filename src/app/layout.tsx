@@ -31,6 +31,7 @@ import { BandOrderCheck } from "@/components/dev/band-check";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Toaster } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 
 import "./globals.css";
 
@@ -133,7 +134,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       // in-page anchor scrolling (the nav's #services and #contact-form tabs)
       // smooth, which is the only place smooth was ever wanted.
       data-scroll-behavior="smooth"
-      className={`${poppins.variable} ${openSans.variable} h-full antialiased`}
+      className={cn(poppins.variable, openSans.variable, "h-full antialiased")}
     >
       <head>
         {/* Scroll-reveal starts elements hidden and JavaScript reveals them. If
@@ -171,9 +172,16 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             tabs before reaching any content — on every single navigation. It is
             visually hidden until focused, which is the point: it costs sighted
             users nothing and is the first stop for everyone else. */}
+        {/* min-h-11 AND items-center, not more padding. Measured focused at
+            146x40 — 4px under the 44px this project holds every other target
+            to, because the height came from `py-2` plus whatever the line box
+            happened to be. Padding-derived height is only correct until the
+            font or line-height moves; a min-height states the requirement and
+            survives both. inline-flex is what lets items-center do the
+            vertical centring once the box is taller than the text. */}
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-100 focus:rounded-lg focus:bg-brand focus:px-4 focus:py-2 focus:font-medium focus:text-on-brand"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-100 focus:inline-flex focus:min-h-11 focus:items-center focus:rounded-lg focus:bg-brand focus:px-4 focus:font-medium focus:text-on-brand"
         >
           Skip to content
         </a>

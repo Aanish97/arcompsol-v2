@@ -118,7 +118,7 @@ and the emptied board leaves the layout so they rise into its space.
   outside any `@layer`, and unlayered styles beat layered ones regardless of
   source order — a rule in `@layer components` holding those words back could
   never win. `StaggerText` takes a `className` prop for exactly this.
-- **The word is moved with FLIP, scaled by WIDTH,** onto the *last* word span —
+- **The word is moved with FLIP, scaled by WIDTH,** onto the _last_ word span —
   the slot reads "at Arcompsol" and measuring the whole slot lands the word
   straddling the space. The readout is set in the heading's own face, size, case
   and colour, so the scale resolves to ~1 and the flight is near-pure
@@ -236,13 +236,13 @@ where a page should land rather than something it passes through twice.
 
 Rhythm comes from PANELS AND TEXTURE instead of alternating grounds:
 
-| Band | Ground | What differentiates it |
-|---|---|---|
-| Services | `--surface` | tiles on a `--secondary` slab |
-| How we work | `--surface-alt` | the honeycomb field |
-| Benefits (/careers) | `--surface-alt` | the honeycomb field |
-| Testimonials | `--surface` | plain, one quote card |
-| Footer | `--brand-navy` | the only dark ground |
+| Band                | Ground          | What differentiates it        |
+| ------------------- | --------------- | ----------------------------- |
+| Services            | `--surface`     | tiles on a `--secondary` slab |
+| How we work         | `--surface-alt` | the honeycomb field           |
+| Benefits (/careers) | `--surface-alt` | the honeycomb field           |
+| Testimonials        | `--surface`     | plain, one quote card         |
+| Footer              | `--brand-navy`  | the only dark ground          |
 
 ### One motion standard, two speeds — 2026-08-13
 
@@ -258,7 +258,177 @@ is the commonest reason an interface feels sluggish.** Interaction timings were
 a mix of 300ms defaults and 500ms arrival curves across five files before this.
 
 Documented exceptions, all at their call sites: `--kbd-overshoot` on the
-keyboard strike, the 460ms card flip, the 30s honeycomb drift.
+keyboard strike, the 460ms card flip, the 30s honeycomb drift, the 420ms nav
+marker (a spatial move, not a response — see below).
+
+### The header underline travels — 2026-08-17
+
+One line slides between nav tabs instead of one line per tab switching on and
+off. `layout/site-header.tsx` owns it; `nav-link.tsx` takes a `travelling` prop
+and stops drawing its own active line when it is set.
+
+**It exists because this header already knew the answer and was throwing it
+away.** The section IntersectionObserver moves the current tab from Home to
+Services and back _while you scroll_, with no click involved — which is unusual;
+most navs only change on navigation. Two independent `scale-x` underlines at
+opposite ends of a 422px bar do not read as one thing moving, so a continuously
+updating state was being drawn as a blink.
+
+- **420ms, not 220ms.** It is a spatial move of up to ~340px, so it is timed
+  like a layout transition rather than like a hover. It runs on the site curve.
+- **Transform only, scaled by WIDTH** — a 1px box translated and stretched with
+  `scaleX`, the same technique that flies the typed word into the services
+  heading. Animating `left`/`width` would re-run layout on every frame of a
+  slide that happens _while the page is already scrolling_.
+- **Measured with rects, not `offsetLeft`/`offsetWidth`.** The offset properties
+  round to whole pixels; "Services" is 56.83px wide and reports 57, so the
+  marker overhung its tab by a pixel and the overhang changed with scroll
+  position. Verified 0.00px on x, width and y across all three routes.
+- **The fallback is not optional.** Under reduced motion, and until the effect
+  has measured, `travelling` is false and each tab draws its own underline
+  exactly as before. A marker that teleports between tabs is not a quieter
+  version of this — it is a worse version of what it replaced. The hover
+  underline is untouched in every case.
+- **Below `md` the marker is not mounted at all.** The `<nav>` is `hidden`, so
+  every tab measures 0x0; a zero width is treated as "not measurable" rather
+  than "zero wide", or crossing 768px on a resize would slide the marker in
+  from the left edge.
+
+### "Let's talk" was dead for the first second of every page view — 2026-08-17
+
+`id="contact-form"` sat on the `<form>`, inside a `next/dynamic ssr:false`
+chunk. **Verified by curl: the id appeared 0 times in the server HTML of `/`,
+`/about` and `/careers`.** The chunk landed at ~1036ms, and until it did,
+`scrollToId("contact-form")` found nothing and returned silently — so the site's
+one conversion CTA, the header pill on every route plus the hero button, did
+nothing at all for the first second of every visit.
+
+The id now lives on a server-rendered wrapper in `site-footer.tsx`, along with
+the `scroll-mt-20` that has to travel with it. Confirmed present in the HTML of
+all three routes, and a click now lands the form at exactly 80px — clear of the
+73px sticky header.
+
+**An anchor may never live inside a lazily-imported chunk.** That was already
+half-known: `scroll-to-button.tsx` existed partly because this target could be
+missing. It should have been read as a bug report rather than a workaround.
+
+### The form chunk is loaded on intent, not on every page view — 2026-08-17
+
+125 kB, arriving at ~1036ms on every route, 24% of a 515 kB cold load, for a
+form most visitors never scroll to. `next/dynamic` had moved it off the critical
+path but not off the page. It is now gated in `contact-form-lazy.tsx`.
+
+**Measured, production build, home page: 515 kB → 377 kB cold, JS 344 → 215 kB.
+CLS stayed 0.**
+
+- **Two triggers, both load-bearing.** An IntersectionObserver at
+  `rootMargin: 1200px` covers scrolling. A capture-phase document click listener
+  covers the visitor who presses "Let's talk" at the top of a 4,650px page and
+  never scrolls at all — the highest-intent visitor on the site, and the one the
+  observer serves worst, since it cannot fire until the footer is nearly in
+  view. Measured: the fetch starts **71ms after the click**, alongside the glide
+  rather than after it.
+- The listener matches `a[href="#contact-form"]` and
+  `[data-scroll-target="contact-form"]`, because the nav tabs are anchors and
+  the two hero CTAs are `<button>`s with no href. `ScrollToButton` now states
+  its destination in the DOM for that reason, and names no consumer.
+- **The gate made an existing 45px error matter.** The placeholder was 566px
+  against a 611px form. That was nearly invisible while the swap happened at
+  ~1036ms; now the swap happens as the reader arrives, directly under their
+  eyes. Re-measured against the mounted form: a group label is 20px not 12, a
+  field is 68px not 64 (20px caption + 8px gap + 40px control), the message
+  block is 130px not 112. **Handover now measures 611 → 611, CLS 0, zero shift
+  events.**
+- Do not re-measure this by eye. Mount the form and compare the two boxes.
+
+### The one image next/image never touched — 2026-08-17
+
+`.about-hero` is a CSS `background-image`, so it went out exactly as authored —
+no format negotiation, no responsive sizes, no lazy loading — while every
+`<Image>` on the site is re-encoded down. The gap: 840 kB of source images serve
+as 54 kB site-wide, and this single decorative photo was **137.6 kB on its own,
+above the fold on /about.**
+
+Re-encoded to WebP at quality 80 with sharp (already a Next dependency):
+**140,878 → 32,146 bytes, 77% off**, no markup change and no visual change — it
+sits under a brand radial wash and a `--surface` linear wash at 82-93%, so it is
+heavily veiled before it is ever seen. Measured q60/70/78/85 at
+21.7/24.6/29.7/42.7 kB and took 80 for headroom rather than the smallest number.
+
+No JPEG fallback: every browser this project supports has taken WebP since 2020,
+and `next/image` already serves WebP/AVIF to all of them everywhere else. The
+`.jpg` stays in `public/images` as the unedited source; nothing references it.
+
+**A colour written in `bg-[...]` is invisible to a palette change, and an image
+written in CSS is invisible to the image pipeline.** Same class of bug, and this
+band has now produced both.
+
+### A column with no links is not a landmark — 2026-08-17
+
+The footer's "Our Services" column was a `<nav>` containing two `<span>`s and
+zero links — both entries carry `href: null` because those pages do not exist
+yet. Someone navigating by landmark was offered "Our Services, navigation", went
+there, and found nothing to follow. It renders as a plain `<div>` until an entry
+gets an href, at which point it becomes a landmark again on its own. The
+heading, the list and every pixel are identical either way.
+
+### A link to the page you are on returns you to the top — 2026-08-17
+
+`common/site-link.tsx` is now the one component every internal route link goes
+through: the nav tabs, both wordmarks and the footer's link columns.
+
+**Next's `<Link>` does nothing at all when the destination is the current
+route.** Not a slow navigation, not a warning — nothing. Measured from scrollY
+4647 at the bottom of the home page: the header wordmark, the nav's "Home" tab,
+the footer's "Home" link and the footer wordmark each left the page exactly
+where it stood. Four dead controls, two of them sitting directly beside the
+contact form, which is the single place a visitor is most likely to want the top
+of the page back. `/about` and `/careers` had the same dead spot on their own
+footer links.
+
+- **It scrolls, it does not navigate.** `lib/scroll-to.ts` gained `scrollToTop`
+  alongside `scrollToId`, and the two now share one `scrollVerified` helper —
+  the grace window, the scroll-event probe and the reduced-motion branch were
+  going to be identical in both, and this file has been bitten before by a pair
+  that got fixed in one copy only.
+- **Modified clicks are left to the browser.** cmd/ctrl/shift/alt-click and
+  middle-click are a request for a new tab, and the old hash interception
+  swallowed them: cmd+clicking "Services" scrolled the tab you were in and
+  opened nothing. The guard covers the hash branch too, which is where the bug
+  originally was.
+- **The footer is still a server component.** Only the link leaf is a client
+  component; its addresses, headings and icons still ship as HTML.
+- Verified after the change: all four controls 4591 → 0; hash links still scroll
+  down and still add no hash to the URL; cross-route Home still lands at 0; the
+  mobile sheet still closes on tap and returns to the top in the same gesture.
+
+### Tailwind v4 compiles `translate-y` to `translate`, not `transform` — 2026-08-17
+
+**Every lift on the site was untransitioned and had been since the styling
+pass.** `ui/button.tsx` declared
+`transition-[color,background-color,border-color,box-shadow,transform]` and then
+moved with `hover:-translate-y-px` — which v4 emits as the standalone
+`translate` property. The list named `transform`, so the movement matched
+nothing in it: both hero CTAs, the contact form's submit and the carousel arrows
+jumped a pixel on the first frame of hover while their shadow eased over 220ms,
+and the `active:` press was instant in both directions.
+
+It never looked broken because the shadow _was_ transitioning, so the controls
+read as slightly soft rather than as janky. The service cards were fine
+throughout — they use Tailwind's `transition-transform` shorthand, which expands
+to `transform, translate, scale, rotate`.
+
+**The rule: an explicit `transition-[…]` list must spell out everything the
+shorthand would have covered.** `translate` is now in the list in
+`ui/button.tsx` and `nav-link.tsx`. Verified in the browser on 2026-08-17 — all
+nine lifting controls on the home page carry `translate` in their computed
+`transition-property`.
+
+The header's "Let's talk" pill moved onto the same language in the same pass. It
+was the one primary action on the site with its own: `hover:scale-105`, with no
+transform in its transition list at all, on a box containing text — so the label
+resampled every time a pointer crossed it. It now lifts a pixel and returns to 0
+on press, like every other CTA.
 
 ### Carousels autoplay again, WITH their pause controls — 2026-08-13
 
@@ -344,13 +514,13 @@ sequence. Benefits is `--surface` now and the page alternates again.
 **Two of the same ground in a row is one band with a heading in it.** Check the
 sequence whenever a band changes colour:
 
-| | home | /about | /careers |
-|---|---|---|---|
-| 1 | hero — paper | hero — photo | hero — paper |
-| 2 | services — paper + panel | values — paper | qualities — **tint** |
-| 3 | how we work — **tint** + hex | how we work — **tint** + hex | benefits — paper + hex |
-| 4 | testimonials — paper | footer — navy | openings — **tint** |
-| 5 | footer — navy | | footer — navy |
+|     | home                         | /about                       | /careers               |
+| --- | ---------------------------- | ---------------------------- | ---------------------- |
+| 1   | hero — paper                 | hero — photo                 | hero — paper           |
+| 2   | services — paper + panel     | values — paper               | qualities — **tint**   |
+| 3   | how we work — **tint** + hex | how we work — **tint** + hex | benefits — paper + hex |
+| 4   | testimonials — paper         | footer — navy                | openings — **tint**    |
+| 5   | footer — navy                |                              | footer — navy          |
 
 ### Band order is checked by the machine now — 2026-08-14
 
@@ -450,10 +620,10 @@ gradient track is untouched and is still the entire design on its own; the drawn
 line sits over it. Every failure mode therefore lands on the design that shipped
 before this: verified in all four combinations —
 
-| | JS | no JS |
-|---|---|---|
-| motion OK | draws on scroll | fully drawn (`<noscript>`) |
-| reduced motion | fully drawn, anime.js never runs | fully drawn |
+|                | JS                               | no JS                      |
+| -------------- | -------------------------------- | -------------------------- |
+| motion OK      | draws on scroll                  | fully drawn (`<noscript>`) |
+| reduced motion | fully drawn, anime.js never runs | fully drawn                |
 
 The track measured 1283px tall and present in all four. **Do not merge the two
 elements into one animated line.**
@@ -509,6 +679,13 @@ this person". Drop a real photograph in and set it; nothing else changes.
 `Placeholder.png` is deleted — a shared placeholder file is how this defect
 spread in the first place.
 
+> **SUPERSEDED 2026-08-17.** The `avatar` field is gone, along with every
+> personal name and all three remaining portraits — see "Testimonials are
+> attributed by role, not by person" below. The reasoning above still holds for
+> why a shared placeholder was the wrong answer, which is why it is kept; but
+> `Monogram` now takes the ORGANISATION, and it is the intended appearance
+> rather than a stand-in for a photograph that has not arrived.
+
 ### The last two values are still ours — 2026-08-14
 
 `content/about.ts` carried `// DRAFT — pending the owner's own wording` on
@@ -520,9 +697,16 @@ Both have had a craft pass — the rhythm of the three the owner did write, no
 claim added or removed. "We own the outcome, not just the task" and "we stay
 through the part of a project that is hard" now land the way the others do.
 
-**This fixes how they read, NOT whose words they are.** The note in the file
-says so and stays until the owner replaces them. Recorded as knowingly open, not
-as closed.
+**The craft pass fixed how they read, not whose words they were** — so this sat
+as knowingly open rather than closed, which was the right call: code review
+picked it up again a day later and asked the same question, because a draft
+parked in a comment is not tracked by anything.
+
+**CLOSED 2026-08-14: the owner read both sentences and approved them as
+written.** They are the company's words now. The note in the file records that
+the three above were AUTHORED by him and these two were RATIFIED by him, which
+is a real difference worth keeping if the values are ever revisited — but it is
+no longer an open item, and it is no longer a draft.
 
 ### The hero art moves on phones now — 2026-08-14
 
@@ -599,11 +783,11 @@ perception.
 tried at 20%/24% first and brought back on the owner's call. The measured cost
 of that decision, same strip and method:
 
-| cell tint | pulse peak, mean px shift |
-|---|---|
-| 11% (original) | 2.659 |
-| **15% (shipped)** | **2.833** |
-| 20% (tried) | 3.806 |
+| cell tint         | pulse peak, mean px shift |
+| ----------------- | ------------------------- |
+| 11% (original)    | 2.659                     |
+| **15% (shipped)** | **2.833**                 |
+| 20% (tried)       | 3.806                     |
 
 **The response is not linear in the tint** — the four points from 11 to 15 buy
 about a seventh of what the nine points from 11 to 20 do, so 15% is much closer
@@ -622,10 +806,10 @@ Contrast re-measured as the rule in `globals.css` demands, at the field's
 mid-height in the centre column, pulse at peak, every non-field element hidden
 so the darkest remaining pixel IS the ground:
 
-| tone | worst ground | heading | body |
-|---|---|---|---|
-| paper | `#E7ECF0` | 15.04:1 | 8.60:1 (`--ink-soft`) |
-| navy | `#142220` | 16.41:1 | 6.77:1 (white/60) |
+| tone  | worst ground | heading | body                  |
+| ----- | ------------ | ------- | --------------------- |
+| paper | `#E7ECF0`    | 15.04:1 | 8.60:1 (`--ink-soft`) |
+| navy  | `#142220`    | 16.41:1 | 6.77:1 (white/60)     |
 
 Identical at 1920 and 375. **Mobile is checked deliberately**: below `md` the
 step panels lose their opaque background and the step headings sit directly on
@@ -646,15 +830,205 @@ component, which is what keeps `Milestones` a server component). **Diagonal
 drift** was offered and not taken — the downward direction is documented as
 deliberate, "it reads in the same direction as the process it sits behind".
 
+### The contact flags come from an API now — 2026-08-14
+
+The phone field's country flags are fetched from **flagcdn.com**, on the owner's
+call, and **`public/flags` was deleted** — 265 files, 1.1MB, gone in the same
+pass on the owner's follow-up. This reverses the self-hosted decision that
+`contact-form.tsx` used to record; the reasoning there was sound and is not
+disowned, it was simply not the call to make. This repo now holds no flag assets
+of any kind.
+
+**It is a `flagComponent`, not a `flagUrl`.** The one-line version of this change
+is `flagUrl="https://flagcdn.com/{xx}.svg"`, and it ships two broken images. All
+265 flags that used to sit in `public/flags` were requested from flagcdn and
+cross-referenced against the 245 countries `libphonenumber-js` actually offers
+in the picker: **AC (Ascension Island, +247) and TA (Tristan da Cunha, +290)
+return 404**. Nobody scrolls to Ascension Island while testing a contact form, so
+that defect ships and stays. `common/country-flag.tsx` skips the CDN for those
+two before the request is made, and falls back on `error` for everything else —
+the CDN being down, rate-limiting, or blocked by a corporate filter.
+
+**The fallback is a character, not a file**, which is what let the directory go.
+`flagEmoji` maps the ISO code to its two Unicode regional indicators — 'A' is
+U+1F1E6, so "PK" is U+1F1F5 U+1F1F0 — and the OS draws the flag. Five lines, no
+dependency: verified identical to `country-flag-icons/unicode` for all 245
+countries, and that package is only in `node_modules` transitively via this very
+library, so importing it directly would have been reaching through another
+package's dependency tree.
+
+Know its floor: **on Windows the emoji renders as the two letters, "AC"**, since
+Windows ships no glyphs for regional indicator pairs. That is the intended
+degradation, not an oversight — a country code in a box, beside a "+247" that
+says the same thing, against a broken-image icon that says only that the site is
+broken.
+
+The library's flag border is dropped on the emoji branch. Captured at 4x: the
+emoji is a WAVING flag glyph that never reaches the edges of a 3:2 box, so the
+border framed dark space on all four sides and read as exactly the broken image
+the fallback exists to prevent. It is dropped **through the library's own custom
+properties**, not `shadow-none` — react-phone-number-input's stylesheet is
+unlayered and Tailwind's utilities sit in `@layer utilities`, so an unlayered
+`box-shadow` wins no matter how specific the selector is. Verified: the
+`shadow-none` version computed to no change at all. The variables are declared on
+`:root`, so setting them on the element beats inheritance and layers never enter
+into it. **Every other override in that block works for the same reason.**
+
+**`loading="lazy"` was written first and removed, and the reason matters more
+than the attribute.** The form sits in the footer of every page, always below the
+fold, so deferring one 400B SVG looks free. Measured on the production build,
+scrolled to the centre of the viewport, sampled to six seconds: **the flag never
+requested**. Not slow — never. Zero `requestWillBeSent`, `naturalWidth` stuck at
+0, while a `fetch()` to the same URL from the same page returned fine; flipping
+that element to `eager` at runtime loaded it instantly, and a fresh lazy `<img>`
+beside it behaved identically, so it was the attribute and not the component.
+The disqualifying part is second-order: **a request that is never made never
+fires `error`**, so the fallback cannot catch it. The lazy version failed to a
+permanently blank flag, no console error, no recovery.
+
+What it costs and what it buys, stated plainly. One third-party connection per
+visit that the site does not control, and every visitor's IP reaching Cloudflare
+— against 1.1MB of flag assets out of the repo, a 31-day cache, and flags that
+stay current without anyone re-copying `node_modules`. Verified after the change:
+**exactly one flag request per page view**, 0 console errors, no request at all
+for AC or TA, every country falling back to emoji with flagcdn blocked at the
+network layer, and both paths confirmed visually.
+
+### Autofilled fields stopped going white — 2026-08-14
+
+Picking a number from Chrome's own drop-down repainted the mobile field pale
+blue with black text, in the middle of four dark ones. Reported with a
+screenshot; reproduced and fixed in the reporter's own browser.
+
+**This is not a colour you can set.** Chrome fills an autofilled control with
+`background-color: rgb(232,240,254)` from `:-internal-autofill-selected`, a UA
+pseudo-class page CSS cannot select and cannot beat with specificity,
+`!important`, or layers. `background`, `background-color` and `bg-*` all lose.
+Two properties are the documented way out and they are the only two: a
+`box-shadow` with a large **inset** spread, which paints over the UA background
+inside the border box without touching layout, and `-webkit-text-fill-color`,
+which overrides the glyph colour that `color` cannot while autofilled.
+`caret-color` is a third, separate fix — without it the cursor stays UA-dark and
+is invisible in the field.
+
+`.fields-on-dark` sits on the **form**, not on `FIELD`, and its selector is a
+descendant `:is(input, textarea, select)`. That is deliberate: the phone field's
+real `<input>` is created by react-phone-number-input and never receives our
+`FIELD` classes — it is only reachable as `.PhoneInputInput`. One rule covers it,
+the four ordinary fields, and anything added later.
+
+**The first version of this fix was wrong, and it is worth knowing how.** It went
+in `@layer components`, which fixed the phone field and left Name and Email
+going white — reported with a second screenshot. Cause: Tailwind's
+`focus-visible:ring-3` is a `@layer utilities` rule, utilities come after
+components, and `box-shadow` is ONE property — so focusing a field replaced the
+whole shadow, our cover with it, and Chrome's blue came back. Measured on the
+live page: the focused field computed the ring stack with no inset in it, while
+the unfocused field beside it still had `rgb(28, 46, 43) 0 0 0 1920px inset`.
+**The block is now unlayered**, which is the only thing that beats a layer.
+
+That fix creates the problem it then has to solve. An unlayered cover would
+silently delete the focus ring and the error ring from autofilled fields, again
+because `box-shadow` is one property. So both rings are **restated in that block
+and composed with the cover** rather than against it. That duplicates `FIELD`'s
+ring values in a second place with no way to share them — `FIELD` is Tailwind
+classes, this is the property they compile to — so it is called out in the CSS:
+change one, change the other in the same commit. The same drift trap this file
+already documents for the focus ring.
+
+**And the ring restatement then broke the phone field, which is the third
+correction in this one fix.** Reported from a screenshot: an autofilled, focused
+mobile field drew TWO green outlines. `.PhoneInputInput` does not own its ring —
+`FIELD` sits on the react-phone-number-input WRAPPER, which draws the ring with
+`focus-within`, while the real `<input>` inside has no ring, no border and
+`border-radius: 0`. On the four ordinary fields the restatement REPLACES what the
+utility drew; on the phone input it ADDED a second, sharp-cornered rectangle
+inside the wrapper's rounded one. Both ring branches now carry
+`:not(.PhoneInputInput)`. The cover still applies to it — that is the field the
+whole fix started from; only the rings skip it.
+
+Two Chrome autofill states exist and both are covered by the single `:autofill`
+selector: `:-internal-autofill-previewed` while a suggestion is highlighted in
+the drop-down, and `:-internal-autofill-selected` once it is committed. Verified
+separately, because probing from JavaScript dismisses the preview — so the
+preview state was confirmed from pixels (Name and Email dark, light text, focus
+ring intact) and the committed state from computed styles.
+
+**How the last one was actually measured, because it is the technique that
+worked.** Reading `getComputedStyle` from a tool call ends the autofill state
+before it can be read, and three attempts produced `autofill: false` on a field
+that had visibly been autofilled a second earlier. The answer was to install a
+100ms sampler that logs only on change, THEN drive the keyboard, THEN read the
+log back. That produced the state in question — `af: true`, input `box-shadow`
+`rgb(28, 46, 43) 0 0 0 1920px inset` with no ring in it, wrapper ring still
+present. Use the same approach for anything else UA-driven and transient.
+
+Confirmed against a genuinely autofilled field in the reporter's Chrome, not
+simulated: `:autofill` matched true, `backgroundColor` still computed
+`rgb(232, 240, 254)` — it never goes away — with `box-shadow` computing
+`rgb(28, 46, 43)` (`--night-field`) inset over it and `-webkit-text-fill-color`
+`rgb(238, 243, 241)` (`--on-dark`). Chrome forces `color` to `rgb(0, 0, 0)`
+underneath, which is precisely why the text-fill property is not optional. The
+hover/focus/active branch was checked separately because those are separate UA
+rules with the same background; without restating the override there the field
+flashes white the moment it is touched.
+
+Do not convert this to Tailwind's `autofill:` variant — it emits the same
+declarations into `@layer utilities`. And do not use the `transition:
+background-color 100000s` trick sometimes suggested instead: it only postpones
+the repaint, so the field still flashes white and comes back on any later one.
+
+### Testimonials are attributed by role, not by person — 2026-08-17
+
+Owner's call. Every personal name and all three portraits came off the client
+testimonials. Each quote is now attributed to a **role at an organisation** —
+"Executive Director, Linux Foundation" — and the disc beside it carries the
+ORGANISATION's initials rather than a person's.
+
+**This gives something up, and the file it replaced said so:** "the names
+attached to them are the strongest asset on the site". A named Executive
+Director carries more than an unnamed one. What survives is the part that
+carried most of that weight — the seniority and the organisation — so it is
+still a checkable claim about who is speaking, just not about which person.
+
+Three things moved with it, and all three are the kind that get missed:
+
+- **The three portrait files are deleted**, not orphaned. Their FILENAMES were
+  personal names, so leaving them in `src/assets` would have republished exactly
+  what this removed.
+- **`clients.ts` lost its `person` field.** Its sourcing rule was "a client is
+  named on the share card only because a named person vouched for it and can be
+  checked". With names gone that field would have been the one place they
+  survived, in a file that ships to a public repo. The audit now runs one step
+  further out: every organisation on the card appears as `organization` on a
+  quote in `content/testimonials.ts`.
+- **`Monogram` takes an organisation now**, and is the intended appearance
+  rather than a placeholder. See the SUPERSEDED note on "Two people got their
+  initials back".
+
+**`organization` was split from `role`.** They were one string
+("Executive Director @ Linux Foundation"), which was fine while a person's name
+sat above doing the identifying. With the name gone those two ARE the
+attribution, so they are two fields and two lines.
+
+**What this does NOT achieve: anonymity.** A senior title at a named
+organisation identifies the person to anyone who looks. If the reason for this
+change was consent rather than presentation, the company names have to go too,
+and the share card's client row with them.
+
+**Git history still holds the names and the image files.** Removing them from
+`HEAD` does not remove them from the repository. If that matters, it needs
+history rewriting, and that is a separate decision from this one.
+
 ### Eyebrows are IN USE — deliberate override
 
 Small uppercase wide-tracked labels above a heading are used on this site, by
 the owner's explicit direction (2026-08-12). Two are live:
 
-| Location | Label |
-|---|---|
-| Home hero | `SOFTWARE STUDIO` |
-| Testimonials band | `TESTIMONIALS` |
+| Location          | Label             |
+| ----------------- | ----------------- |
+| Home hero         | `SOFTWARE STUDIO` |
+| Testimonials band | `TESTIMONIALS`    |
 
 Impeccable's craft floor bans eyebrows outright ("this one is a ban, not a
 default: no brief earns it back"). **This project overrides that.** The owner
@@ -664,7 +1038,7 @@ alternative.
 **Do not remove either in a polish, distill, or audit pass.** Do not raise it as
 a finding again; it is settled, not outstanding.
 
-Two further uppercase labels exist and are *not* eyebrows: `YOUR DETAILS` and
+Two further uppercase labels exist and are _not_ eyebrows: `YOUR DETAILS` and
 `YOUR PROJECT` are fieldset group labels in the contact form and do real
 grouping work.
 
@@ -698,12 +1072,12 @@ blues are the same for the dots. Every swatch is the mark at a different weight.
 
 ### Green — the four bars
 
-| Token | Value | On `--surface` | Role |
-|---|---|---|---|
-| `--brand` | `#1B5542` | **8.36:1** | buttons, links, eyebrows, focus ring |
-| `--brand-mid` | `#20654E` | 6.63:1 | hover, secondary buttons, second fill |
-| `--brand-deep` | `#11362A` | 12.7:1 | gradient ends, pressed states |
-| `--brand-on-dark` | `#38B089` | 2.62:1 ✗ | **the mark.** 6.42:1 on navy — dark grounds only |
+| Token             | Value     | On `--surface` | Role                                             |
+| ----------------- | --------- | -------------- | ------------------------------------------------ |
+| `--brand`         | `#1B5542` | **8.36:1**     | buttons, links, eyebrows, focus ring             |
+| `--brand-mid`     | `#20654E` | 6.63:1         | hover, secondary buttons, second fill            |
+| `--brand-deep`    | `#11362A` | 12.7:1         | gradient ends, pressed states                    |
+| `--brand-on-dark` | `#38B089` | 2.62:1 ✗       | **the mark.** 6.42:1 on navy — dark grounds only |
 
 ### Blue — the two dots
 
@@ -712,16 +1086,16 @@ a green, with a comment admitting the name was historical. It is a blue again �
 the mark's `#6597CE`, not the `#00BDFF` cyan that was removed for being the only
 cool note on a warm page.
 
-| Token | Value | On `--surface` | Role |
-|---|---|---|---|
-| `--brand-blue` | `#2F5F93` | **6.38:1** | links, informational states, second series |
-| `--brand-blue-soft` | `#3972B2` | 4.76:1 | large text and 24px+ only |
-| `--brand-blue-deep` | `#1B3755` | 11.7:1 | gradient ends |
-| `--brand-blue-on-dark` | `#6597CE` | 2.95:1 ✗ | the dots. 5.70:1 on navy — dark grounds only |
+| Token                  | Value     | On `--surface` | Role                                         |
+| ---------------------- | --------- | -------------- | -------------------------------------------- |
+| `--brand-blue`         | `#2F5F93` | **6.38:1**     | links, informational states, second series   |
+| `--brand-blue-soft`    | `#3972B2` | 4.76:1         | large text and 24px+ only                    |
+| `--brand-blue-deep`    | `#1B3755` | 11.7:1         | gradient ends                                |
+| `--brand-blue-on-dark` | `#6597CE` | 2.95:1 ✗       | the dots. 5.70:1 on navy — dark grounds only |
 
 **Blue is not for buttons.** A secondary action belongs to the same family as
 the primary, one step lighter — that is what `--brand-mid` is for, and the
-`brandOutline` button points at it. Blue marks a different *kind* of thing, not
+`brandOutline` button points at it. Blue marks a different _kind_ of thing, not
 a quieter version of the same thing.
 
 **Where the blue actually is (added 2026-08-13).** It was introduced with the
@@ -729,11 +1103,11 @@ palette and then used nowhere but a few 6–11% decorative washes — three of i
 four tokens were dead. It now has three jobs, and they are the ones this section
 claimed for it:
 
-| Where | Token | Why it is blue and not green |
-|---|---|---|
-| Honeycomb lit cells | `--brand-blue` / `--brand-blue-on-dark` | The lattice is green and the cells are blue **because that is what the mark is**: four green bars, two blue dots. The field was green throughout, which made it a texture in the brand colour; split the way the logo is split, it becomes the logo's own structure at wall scale. |
-| Job metadata chips (team, location) | `--brand-blue` on `/10` | Facts *about* the job. Green on this site means "you can do something with this" — buttons, links, focus, hover. Metadata in the same green makes the reader work out which greens are clickable. 5.51:1 on the tint, 5.15:1 on `--surface-alt`. |
-| Footer link hover | `--brand-blue-on-dark` | Green is already taken on that panel — it is the `YOUR DETAILS` group labels and the form's focus ring — so a link lighting up green is the same signal as a heading. 5.70:1 on `--brand-navy`. |
+| Where                               | Token                                   | Why it is blue and not green                                                                                                                                                                                                                                                       |
+| ----------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Honeycomb lit cells                 | `--brand-blue` / `--brand-blue-on-dark` | The lattice is green and the cells are blue **because that is what the mark is**: four green bars, two blue dots. The field was green throughout, which made it a texture in the brand colour; split the way the logo is split, it becomes the logo's own structure at wall scale. |
+| Job metadata chips (team, location) | `--brand-blue` on `/10`                 | Facts _about_ the job. Green on this site means "you can do something with this" — buttons, links, focus, hover. Metadata in the same green makes the reader work out which greens are clickable. 5.51:1 on the tint, 5.15:1 on `--surface-alt`.                                   |
+| Footer link hover                   | `--brand-blue-on-dark`                  | Green is already taken on that panel — it is the `YOUR DETAILS` group labels and the form's focus ring — so a link lighting up green is the same signal as a heading. 5.70:1 on `--brand-navy`.                                                                                    |
 
 The focus ring stays `--brand` and is not a candidate: a focus ring is an
 affordance, and it should match the colour the interface already uses to mean
@@ -741,19 +1115,19 @@ affordance, and it should match the colour the interface already uses to mean
 
 ### Ink, surfaces and grounds
 
-| Token | Value | L\* | Notes |
-|---|---|---|---|
-| `--ink` | `#12181D` | 7.9 | **17.26:1** on surface |
-| `--ink-soft` | `#39424A` | 27.5 | 9.88:1 |
-| `--ink-muted` | `#5A646D` | 41.8 | 5.83:1 on surface, 4.98:1 on secondary |
-| `--ink-faint` | `#9AA6AF` | 67.5 | muted copy on dark bands, 7.01:1 on navy |
-| `--surface` | `#FAFBFC` | 98.6 | page ground, not pure white |
-| `--surface-alt` | `#F0F3F6` | 95.7 | alternating bands |
-| `--secondary` | `#E4EAEF` | 92.4 | panels that hold cards |
-| `--border` | `#D5DDE4` | 87.7 | hairlines |
-| `--brand-dark` | `#16241F` | 12.8 | headings on tinted bands |
-| `--brand-navy` | `#111C1A` | 9.2 | footer and dark bands. White holds 17.43:1 |
-| `--night-alt` | `#182725` | 14.3 | cards and panels ON the dark bands |
+| Token           | Value     | L\*  | Notes                                      |
+| --------------- | --------- | ---- | ------------------------------------------ |
+| `--ink`         | `#12181D` | 7.9  | **17.26:1** on surface                     |
+| `--ink-soft`    | `#39424A` | 27.5 | 9.88:1                                     |
+| `--ink-muted`   | `#5A646D` | 41.8 | 5.83:1 on surface, 4.98:1 on secondary     |
+| `--ink-faint`   | `#9AA6AF` | 67.5 | muted copy on dark bands, 7.01:1 on navy   |
+| `--surface`     | `#FAFBFC` | 98.6 | page ground, not pure white                |
+| `--surface-alt` | `#F0F3F6` | 95.7 | alternating bands                          |
+| `--secondary`   | `#E4EAEF` | 92.4 | panels that hold cards                     |
+| `--border`      | `#D5DDE4` | 87.7 | hairlines                                  |
+| `--brand-dark`  | `#16241F` | 12.8 | headings on tinted bands                   |
+| `--brand-navy`  | `#111C1A` | 9.2  | footer and dark bands. White holds 17.43:1 |
+| `--night-alt`   | `#182725` | 14.3 | cards and panels ON the dark bands         |
 
 ### THE SURFACES ARE COOL, and that was the trade
 
@@ -786,14 +1160,14 @@ white is a **different colour on every ground it sits on**, so `text-white/55`
 on the panel and on a card inside that panel were quietly two different greys;
 and none of it was in the palette, so re-theming could not reach any of it.
 
-| Token | Value | On `--brand-navy` | Role |
-|---|---|---|---|
-| `--on-dark` | `#EEF3F1` | **15.54:1** | headings, primary copy |
-| `--on-dark-soft` | `#B7C4C1` | 9.69:1 | body copy |
-| `--on-dark-muted` | `#8C9A97` | 5.96:1 | labels, captions, meta |
-| `--night-alt` | `#182725` | L\* 14.3 | cards and panels ON a dark band |
-| `--night-field` | `#1C2E2B` | L\* 17.3 | form inputs |
-| `--night-line` | `#2B3D39` | L\* 24.1 | borders and rules on dark |
+| Token             | Value     | On `--brand-navy` | Role                            |
+| ----------------- | --------- | ----------------- | ------------------------------- |
+| `--on-dark`       | `#EEF3F1` | **15.54:1**       | headings, primary copy          |
+| `--on-dark-soft`  | `#B7C4C1` | 9.69:1            | body copy                       |
+| `--on-dark-muted` | `#8C9A97` | 5.96:1            | labels, captions, meta          |
+| `--night-alt`     | `#182725` | L\* 14.3          | cards and panels ON a dark band |
+| `--night-field`   | `#1C2E2B` | L\* 17.3          | form inputs                     |
+| `--night-line`    | `#2B3D39` | L\* 24.1          | borders and rules on dark       |
 
 All three text values clear AA on all three dark grounds. The surfaces are
 spaced 5.1 and 3.0 L\* apart, so a panel inside a band and a field inside a
@@ -911,6 +1285,23 @@ WebGL attempts were reverted for this. Effects here must subtract light.
 
 ## Known open
 
+- **The `Health & Wellness` benefit on /careers is another company's copy, and
+  is knowingly live.** The owner's call on 2026-08-14, to be resolved later.
+  It promises "100% employer-paid medical coverage", 99% dental and vision, and
+  "$60 per month" — FSAs are a US tax instrument and the stipend is in dollars.
+  It came through the same verbatim move from the original project that carried
+  "Grootan" into the home page and "Cleta" into the Location benefit; those two
+  were fixed, this one was not, because fixing it means inventing figures.
+
+  Of the three it is the most consequential. A wrong agency name and a wrong
+  office are embarrassing; specific coverage percentages are something a
+  candidate can act on, on the page where they decide whether to apply.
+
+  It has been raised in review twice and is marked in `content/careers.ts`. It
+  is recorded here so that it is a decision with a date on it rather than a
+  string nobody noticed — which is exactly what it was for the two rounds
+  before this one.
+
 - **The contact form SENDS — smoke-tested 2026-08-14.** This entry used to read
   "the contact form cannot send. No `.env`". Both halves are now out of date.
   `.env` carries `SMTP_EMAIL` and `SMTP_TOKEN`, and a real submission through
@@ -928,12 +1319,9 @@ WebGL attempts were reverted for this. Effects here must subtract light.
   tell you that and neither can a passing build — someone has to look. Note
   that mail from the account to itself is the easy case; a stranger's address
   is the one that exercises SPF/DKIM on this domain.
-- **`Ownership` and `Commitment` in `content/about.ts` are still the writer's
-  words, not the owner's.** Both had a craft pass on 2026-08-14 and now read
-  like the three the owner wrote, which makes this *less* visible rather than
-  more — the note above them in the file is the only thing left flagging it.
-  Two of five stated company values. Replace them and delete the note.
-- **Two testimonials have no photograph** — Omer Erdogan and Abrar Akhtar. They
-  render an initials monogram, which is a designed answer rather than a
-  placeholder, but a real portrait is still the better one. Set `avatar` in
-  `content/testimonials.ts` when the photos arrive; nothing else changes.
+
+- ~~Two testimonials have no photograph~~ — **CLOSED 2026-08-17, by removal.**
+  All personal names and all three portraits came off the testimonials; quotes
+  are attributed to a role at an organisation now. There is no missing
+  photograph to chase, because there are no photographs. See "Testimonials are
+  attributed by role, not by person" above.

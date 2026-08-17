@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Sticky site header: wordmark, nav tabs, and the mobile sheet.
+ * Sticky site header: wordmark, nav tabs, and the mobile sheet's trigger.
  *
  * ── IN SIMPLE WORDS ──
  * The bar across the top. On a phone the links collapse into a panel that
@@ -9,22 +9,29 @@
  * underline when you are on that page.
  *
  * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
- * The nav list is built ONCE in the component body and rendered twice, in the
- * bar and in the sheet. The original built it inside a `getTabs()` helper that
- * called useRouter() itself and was then invoked twice per render — a rules-of-
- * hooks violation that also shadowed the outer `router`. It happened to work,
- * but any early return added above it would have desynced the hook order and
- * crashed on a route change. Hooks belong in the component body.
+ * The nav list is built ONCE here and rendered twice — in the bar below and in
+ * the sheet, which receives it as a prop. The original built it inside a
+ * `getTabs()` helper that called useRouter() itself and was then invoked twice
+ * per render — a rules-of-hooks violation that also shadowed the outer
+ * `router`. It happened to work, but any early return added above it would have
+ * desynced the hook order and crashed on a route change. Hooks belong in the
+ * component body.
  *
  * "Services" points at #services, a section that only exists on the home page,
  * so it is filtered out elsewhere — otherwise the tab is a dead link from
  * /about and /careers.
  *
- * Hash links are intercepted rather than left to the browser: a plain #anchor
- * jumps instantly and, on a Next route that has not painted the target yet,
- * jumps to the wrong offset. The scroll itself goes through lib/scroll-to,
- * shared with the hero buttons and the careers page — read its header before
- * changing anything about how this navigates.
+ * THIS FILE OWNS "WHICH TAB IS CURRENT", and it is the only thing that may.
+ * The answer needs the pathname and an IntersectionObserver over the in-page
+ * sections, and it has to be identical in the bar and in the panel — so
+ * `isItemActive` is computed once and handed down. Do not recompute it in the
+ * sheet.
+ *
+ * IT ALSO OWNS HOW THAT ANSWER IS DRAWN in the bar: one underline that travels
+ * between tabs rather than one per tab switching on and off. The observer above
+ * updates while you scroll, with no click involved, and a marker that slides is
+ * what makes that continuous. See the effect below for the whole rationale and
+ * for the fallback that keeps reduced motion on the old behaviour.
  *
  * OPAQUE, with NO backdrop-filter. A backdrop-filter on a STICKY element makes
  * the browser re-sample and blur everything scrolling beneath it on every
@@ -32,139 +39,32 @@
  * footer visibly flickers while the rest of the page looks fine. A solid bar
  * costs nothing and is visually near-identical.
  *
+ * ── WHERE THE REST OF IT LIVES ──
+ * Split on review, 2026-08-17, at 460 lines:
+ *
+ *   nav-link.tsx          one tab, rendered by BOTH surfaces. Its own module
+ *                         rather than either consumer's, or the two would
+ *                         import from each other and close a cycle.
+ *   site-header-sheet.tsx the hamburger and the panel it opens — 159 lines,
+ *                         and it owns its own open state, which was declared
+ *                         here and read only in there.
+ *
  * ── DO NOT ──
  * - Do not reintroduce backdrop-blur here without scrolling over the footer to
  *   check. It is the single most expensive thing this header can do.
- * - Do not make this a server component. It reads the pathname and holds the
- *   sheet's open state; both need the client.
- * - Do not drop the sheet's onClick close handler. Navigating with the panel
- *   still open leaves it covering the page you just moved to.
+ * - Do not make this a server component. It reads the pathname and drives the
+ *   section observer; both need the client.
  */
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Mail, Menu, Phone } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { BrandLogo } from "@/components/common/brand-logo";
-import { InstagramIcon, LinkedInIcon } from "@/components/common/social-icons";
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import { CONTACT, NAV_ITEMS, SOCIAL_LINKS, type NavItem } from "@/content/site";
-import { scrollToId } from "@/lib/scroll-to";
-import { cn } from "@/lib/utils";
-
-/**
- * Same label -> mark map the footer uses. These are brand logos, not lucide
- * glyphs (lucide has no Instagram or LinkedIn export in this version), and the
- * two surfaces must not drift to different marks for the same account.
- */
-const SOCIAL_ICONS = {
-  Instagram: InstagramIcon,
-  LinkedIn: LinkedInIcon,
-} as const;
-
-/**
- * ONE component for both renders, because both must navigate identically —
- * the hash interception below is the whole reason in-page anchors land at the
- * right offset, and a second copy of it in the sheet would rot.
- *
- * `variant` only changes how it LOOKS. "bar" is the horizontal desktop tab
- * with its hover underline; "sheet" is a full-width row in the mobile panel,
- * where a centred label with an underline reads as a divider rather than as
- * the page you are on (measured from the panel: four centred labels with a
- * full-width rule under the active one).
- */
-function NavLink({
-  item,
-  isActive,
-  onNavigate,
-  variant = "bar",
-}: {
-  item: NavItem;
-  isActive: boolean;
-  onNavigate?: () => void;
-  variant?: "bar" | "sheet";
-}) {
-  const isAnchor = item.href.startsWith("#");
-  const sheet = variant === "sheet";
-
-  return (
-    <Link
-      href={item.href}
-      aria-current={isActive ? "page" : undefined}
-      onClick={(event) => {
-        if (isAnchor) {
-          event.preventDefault();
-          scrollToId(item.href.slice(1));
-        }
-        onNavigate?.();
-      }}
-      className={cn(
-        // min-h-11 = the 44px minimum. With py-2 these measured 39px tall, so
-        // every item in the primary nav — including the only CTA in the header
-        // — was under the touch minimum. inline-flex + items-center keeps the
-        // label optically centred while the box grows to meet it.
-        "relative inline-flex min-h-11 min-w-11 items-center transition-colors duration-220 ease-out",
-        // Brand ring, not the UA default. Nothing here removed the outline, so
-        // focus WAS visible — it just did not match the ring every other
-        // control on the site uses, which reads as an untouched corner.
-        "focus-ring",
-
-        sheet
-          ? // A ROW, not a tab: full width, left-aligned, 48px tall. A finger
-            // gets the whole width of the panel instead of the width of the
-            // word, and the labels share one left edge to read down.
-            "min-h-12 w-full justify-start rounded-xl px-4 text-[0.9375rem]"
-          : "justify-center text-[15px]",
-
-        item.highlight
-          ? cn(
-              "bg-brand font-medium text-on-brand",
-              sheet
-                ? // Squarer and shadowed, so the one action in the panel sits
-                  // forward of the flat rows above it rather than reading as
-                  // a green-filled fifth row.
-                  "min-h-12 justify-center rounded-xl shadow-[0_8px_20px_rgb(var(--shadow-tint)/0.18)] hover:bg-brand-deep"
-                : "rounded-lg px-4 hover:scale-105 hover:bg-brand-deep hover:shadow-[0_12px_32px_rgb(var(--shadow-tint)/0.12)]",
-            )
-          : "text-ink-soft hover:text-ink",
-
-        // The sliding underline is a desktop-tab affordance. In the panel the
-        // active state is a tinted row with a brand rule down its left edge —
-        // the same "this one" language the quote cards use.
-        !item.highlight &&
-          !sheet &&
-          "after:absolute after:inset-x-0 after:-bottom-px after:h-px after:origin-left after:scale-x-0 after:bg-ink after:transition-transform hover:after:scale-x-100",
-        !item.highlight &&
-          !sheet &&
-          isActive &&
-          "font-medium text-ink after:scale-x-100",
-
-        !item.highlight && sheet && "hover:bg-surface-alt hover:text-ink",
-        // Brand tint, not the grey surface: the panel's ground IS --surface and
-        // its footer band is --surface-alt, so a --surface-alt active row was
-        // the same value as furniture elsewhere in the panel and read as a
-        // container rather than as "you are here". The left rule is the same
-        // marker the quote cards use.
-        !item.highlight &&
-          sheet &&
-          isActive &&
-          "bg-brand/10 font-semibold text-brand before:absolute before:inset-y-2.5 before:left-0 before:w-1 before:rounded-r-full before:bg-brand",
-      )}
-    >
-      {item.label}
-    </Link>
-  );
-}
+import { NavLink } from "@/components/layout/nav-link";
+import { SiteHeaderSheet } from "@/components/layout/site-header-sheet";
+import { NAV_ITEMS, type NavItem } from "@/content/site";
 
 export function SiteHeader() {
   const pathname = usePathname();
-  const [isOpen, setIsOpen] = useState(false);
   const [activeHash, setActiveHash] = useState<string | null>(null);
 
   const items = NAV_ITEMS.filter((item) => !item.homeOnly || pathname === "/");
@@ -245,6 +145,104 @@ export function SiteHeader() {
       ? activeTab === item.href
       : pathname === item.href && !activeTab;
 
+  /**
+   * The href of the tab that is current right now, or "" when none is. Exactly
+   * one non-highlight tab is always current — a hash tab wins over the path tab
+   * above, and "Let's talk" is filtered out of `hashKey` so it is never
+   * observed — so this is the marker's single input.
+   */
+  const activeKey = items.find((item) => isItemActive(item))?.href ?? "";
+
+  const navRef = useRef<HTMLElement>(null);
+  const [marker, setMarker] = useState<{
+    x: number;
+    y: number;
+    w: number;
+  } | null>(null);
+
+  /**
+   * ── The travelling underline ─────────────────────────────────────────────
+   *
+   * ── IN SIMPLE WORDS ──
+   * One line under the nav that slides across to whichever tab you are on,
+   * instead of one line per tab blinking off and another blinking on.
+   *
+   * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
+   * THE OBSERVER ABOVE ALREADY KNOWS THE ANSWER CONTINUOUSLY. Scrolling the
+   * home page moves the current tab from Home to Services and back with no
+   * click involved, which is unusual — most navs only change on navigation.
+   * Two independent `scale-x` underlines at opposite ends of a 422px bar do not
+   * read as one thing moving, so that continuous knowledge was being spent on a
+   * blink. This is the same state, drawn as one object.
+   *
+   * TRANSFORM ONLY, SCALED BY WIDTH. The marker is a 1px-wide box that is
+   * translated into place and stretched with `scaleX`, so a tab change animates
+   * on the compositor and never touches layout — the same technique
+   * services-grid.tsx uses to fly the typed word into the heading. Animating
+   * `left`/`width` would re-run layout on every frame of a slide that happens
+   * while the page is already scrolling.
+   *
+   * MEASURED FROM THE <a>, NOT THE <li>. The `<a>` is what carries the tab's
+   * padding and what the old `::after` was positioned against, so measuring it
+   * puts the marker on the pixel the underline used to occupy. `aria-current`
+   * is the selector because NavLink already sets it — a second attribute for
+   * the same fact is a second thing to keep in sync.
+   *
+   * THE RESIZE OBSERVER IS NOT OPTIONAL. Tab widths move when the viewport
+   * changes AND when Poppins/Open Sans swap in on a cold load, and both change
+   * the <nav>'s own width, so watching this one element catches both.
+   *
+   * ── DO NOT ──
+   * - Do not remove the fallback. Until this effect has measured, and forever
+   *   under reduced motion, NavLink draws its own underline (`travelling` is
+   *   false). A marker that teleports between tabs is not a quieter version of
+   *   this effect, it is a worse version of the thing it replaced.
+   * - Do not move the marker inside the <ul>. A <ul> may only contain <li>, so
+   *   it is a sibling and the <nav> is the positioned ancestor both it and
+   *   `offsetLeft` resolve against.
+   */
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const measure = () => {
+      const tab = nav.querySelector<HTMLElement>('[aria-current="page"]');
+      // RECTS, NOT offsetLeft/offsetWidth. The offset properties are rounded to
+      // whole pixels: "Services" is 56.83px wide and reports 57, so the marker
+      // was drawn a pixel wider than the tab it was under and the overhang
+      // changed with the scroll position. The `::after` it replaced was
+      // `inset-x-0` — the border box exactly — and a rect is the only way to
+      // say that.
+      const box = tab?.getBoundingClientRect();
+      const origin = nav.getBoundingClientRect();
+      // A ZERO WIDTH IS "NOT MEASURABLE", NOT "ZERO WIDE". This <nav> is
+      // `hidden md:block`, so below md every tab measures 0x0 — mounting the
+      // marker on that would suppress NavLink's own underline (`travelling`
+      // reads `marker !== null`) with a scaleX(0) box in its place, and then
+      // slide it in from the left edge the moment a resize crossed 768px.
+      // Staying null keeps the phone on the fallback and makes the first
+      // desktop frame a placement rather than a slide.
+      setMarker(
+        box && box.width
+          ? {
+              x: box.left - origin.left,
+              // The old `::after` sat at `-bottom-px`: a 1px box whose bottom
+              // edge is 1px below the link, so its top edge is exactly the
+              // link's bottom edge. This lands on the same row.
+              y: box.bottom - origin.top,
+              w: box.width,
+            }
+          : null,
+      );
+    };
+
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, [activeKey]);
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-surface">
       {/* max-w-6xl + px-6 to MATCH Section width="wide" and the footer. This was
@@ -270,171 +268,46 @@ export function SiteHeader() {
             other. The layout classes move to the <ul>; the <nav> keeps only
             the breakpoint switch, or `hidden md:flex` would be fighting a
             child that is now doing the flexing. */}
-        <nav aria-label="Primary" className="hidden md:block">
+        {/* relative: the positioned ancestor the marker below is placed
+            against, and the box `offsetLeft`/`offsetTop` are measured from. */}
+        <nav
+          ref={navRef}
+          aria-label="Primary"
+          className="relative hidden md:block"
+        >
           <ul className="flex items-center gap-6 md:gap-8">
             {items.map((item) => (
               <li key={item.href}>
-                <NavLink item={item} isActive={isItemActive(item)} />
+                <NavLink
+                  item={item}
+                  isActive={isItemActive(item)}
+                  travelling={marker !== null}
+                />
               </li>
             ))}
           </ul>
+
+          {/* Rendered only once measured, and already in position on its first
+              frame — mounting is not the animation, moving between tabs is.
+
+              420ms on the site's curve: the marker crosses up to ~340px of bar,
+              which is a spatial move rather than a state change, so it is timed
+              like one. The transition is inline because the values it animates
+              are inline; splitting them puts half the behaviour in a stylesheet
+              that cannot see the other half. */}
+          {marker && (
+            <span
+              aria-hidden
+              className="pointer-events-none absolute top-0 left-0 h-px w-px origin-left bg-ink"
+              style={{
+                transform: `translate3d(${marker.x}px, ${marker.y}px, 0) scaleX(${marker.w})`,
+                transition: "transform 0.42s cubic-bezier(0.16, 1, 0.3, 1)",
+              }}
+            />
+          )}
         </nav>
 
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon-lg"
-              // size-11, because `icon-lg` is size-9 (36px) and this is the
-              // ONLY navigation control that exists below md — the one control
-              // on the site where a missed tap has nowhere else to go. Set here
-              // rather than on the shared variant, which other call sites size
-              // their own way (see the carousel arrows).
-              className="size-11 md:hidden"
-              aria-label="Open menu"
-            >
-              <Menu className="size-5" />
-            </Button>
-          </SheetTrigger>
-          {/* p-0 because this panel sets its own bands: a header rule, a nav
-              block, and a footer pinned to the bottom. The default padding
-              would inset those rules off the panel edges. */}
-          {/* --surface, not the popover white. Every band on the site is warm
-              paper; a pure-white panel sliding over it reads as a different
-              product. p-0 because this panel sets its own bands, and the
-              default padding would inset their rules off the panel edges. */}
-          <SheetContent
-            side="right"
-            className="w-[19rem] gap-0 bg-surface p-0 sm:w-80"
-          >
-            <SheetTitle className="sr-only">Navigation</SheetTitle>
-
-            {/* The wordmark, so the open panel still says whose site this is —
-                it covers the header that was carrying it. Its height matches
-                the bar's min-h-16 so the rule lands where the header's does,
-                and the pr-14 keeps it clear of the close button, which the
-                Sheet renders absolutely at top-3 right-3. */}
-            <div className="flex min-h-16 items-center border-b border-border px-5 pr-14">
-              <BrandLogo />
-            </div>
-
-            {/* A labelled group, not a bare stack. At this width the rows are
-                the only thing on screen, and a quiet caption over them gives
-                the panel a top edge to start reading from instead of four
-                links floating under a rule. */}
-            {/* Named by the caption it already had, rather than by a second
-                hand-written aria-label that would drift from it. */}
-            <nav
-              aria-labelledby="sheet-menu-caption"
-              className="flex flex-col gap-1 px-3 pt-5 pb-3"
-            >
-              <p
-                id="sheet-menu-caption"
-                className="px-4 pb-2 text-[0.6875rem] font-semibold tracking-[0.12em] text-ink-muted uppercase"
-              >
-                Menu
-              </p>
-              <ul className="flex flex-col gap-1">
-                {items
-                  .filter((item) => !item.highlight)
-                  .map((item) => (
-                    <li key={item.href}>
-                      <NavLink
-                        item={item}
-                        isActive={isItemActive(item)}
-                        onNavigate={() => setIsOpen(false)}
-                        variant="sheet"
-                      />
-                    </li>
-                  ))}
-              </ul>
-            </nav>
-
-            {/* The CTA is lifted out of the row list and given the full width.
-                It is the one action on the panel rather than a fifth
-                destination, and inline it read as another list item. Still a
-                NavLink, so #contact-form goes through scrollToId like
-                everywhere else. */}
-            {items
-              .filter((item) => item.highlight)
-              .map((item) => (
-                <div key={item.href} className="px-3 pb-4">
-                  <NavLink
-                    item={item}
-                    isActive={false}
-                    onNavigate={() => setIsOpen(false)}
-                    variant="sheet"
-                  />
-                </div>
-              ))}
-
-            {/* mt-auto pins this to the bottom, and --surface-alt separates it
-                from the nav as its own band rather than another rule across
-                the same ground. The panel is full height and the nav fills its
-                top third, so without this the lower half is empty — and a
-                phone is the one device where tapping a number to call is the
-                shortest path to the same outcome as the form. */}
-            <div className="mt-auto border-t border-border bg-surface-alt px-5 py-6">
-              <p className="text-[0.6875rem] font-semibold tracking-[0.12em] text-ink-muted uppercase">
-                Get in touch
-              </p>
-
-              {/* Two ways to reach the same company — a list, so it is
-                  announced as "list, 2 items" rather than as two links that
-                  happen to sit near each other. */}
-              <ul className="mt-2 flex flex-col">
-                <li>
-                  <a
-                    href={`mailto:${CONTACT.email}`}
-                    className="group/row -mx-2 flex min-h-11 items-center gap-3 rounded-lg px-2 text-sm text-ink-soft transition-colors hover:text-brand focus-ring"
-                  >
-                    {/* A tinted tile rather than a bare glyph: at 14px an icon
-                        on its own reads as a bullet, and the tile gives the two
-                        rows a shared left edge for the labels to hang off. */}
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand transition-colors group-hover/row:bg-brand group-hover/row:text-on-brand">
-                      <Mail className="size-4" />
-                    </span>
-                    <span className="truncate">{CONTACT.email}</span>
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href={`tel:${CONTACT.phone.replace(/\s/g, "")}`}
-                    className="group/row -mx-2 flex min-h-11 items-center gap-3 rounded-lg px-2 text-sm text-ink-soft transition-colors hover:text-brand focus-ring"
-                  >
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand transition-colors group-hover/row:bg-brand group-hover/row:text-on-brand">
-                      <Phone className="size-4" />
-                    </span>
-                    <span className="truncate">{CONTACT.phone}</span>
-                  </a>
-                </li>
-              </ul>
-
-              {/* The same two socials the footer carries. The footer is the
-                  only other place they live, and it is a long scroll away from
-                  an open nav panel. */}
-              <ul className="mt-4 flex items-center gap-2 border-t border-border pt-4">
-                {SOCIAL_LINKS.map((social) => {
-                  const Icon =
-                    SOCIAL_ICONS[social.label as keyof typeof SOCIAL_ICONS];
-                  return (
-                    <li key={social.label}>
-                      <a
-                        href={social.href}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label={social.label}
-                        className="flex size-11 items-center justify-center rounded-lg text-ink-muted transition-colors hover:bg-brand/10 hover:text-brand focus-ring"
-                      >
-                        <Icon className="size-4.5" />
-                      </a>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          </SheetContent>
-        </Sheet>
+        <SiteHeaderSheet items={items} isItemActive={isItemActive} />
       </div>
     </header>
   );

@@ -1,36 +1,20 @@
 "use client";
 
 /**
- * Fades and lifts its children into view the first time they are scrolled to.
+ * Reveals its children the first time they are scrolled to, once.
  *
- * ── IN SIMPLE WORDS ──
- * Content sits still until it reaches the viewport, then rises a little and
- * fades in. Once shown it stays shown — it does not replay when you scroll back
- * up, which is distracting on a page you are re-reading.
+ * IT ONLY FLIPS A DATA ATTRIBUTE — every visual state is CSS (globals.css).
+ * That is what lets the hidden state sit inside a `prefers-reduced-motion`
+ * query and lets layout.tsx's `<noscript>` rule override it. Set opacity from
+ * here "to be safe" and both stop working: reduced-motion users get content
+ * hidden from them, and a blocked bundle leaves the page blank.
  *
- * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
- * IntersectionObserver, not a scroll listener. A scroll handler fires on every
- * frame of every scroll for every element on the page; the observer is told
- * once what to watch and the browser does the work off the main thread.
+ * rootMargin's -12% bottom fires the reveal slightly BEFORE the element reaches
+ * the viewport edge, so it has settled by the time you look at it rather than
+ * animating under your eye. services-grid.tsx matches these margins on purpose.
  *
- * The observer DISCONNECTS after the first reveal. Left connected, six milestone
- * rows plus nine cards keep observing for the life of the page for no reason.
- *
- * All the visual state is CSS (see globals.css). This component only flips a
- * data attribute. That is what lets the hidden state live inside a
- * prefers-reduced-motion query and lets <noscript> override it — neither is
- * possible if opacity is set from JavaScript.
- *
- * rootMargin's -12% bottom means the reveal fires slightly BEFORE the element
- * reaches the bottom edge. Triggering exactly at the edge means you watch it
- * animate; triggering early means it has already settled by the time you look.
- *
- * ── DO NOT ──
- * - Do not wrap above-the-fold content in this. The first thing a visitor sees
- *   should not fade in — it reads as a slow page, not as polish.
- * - Do not set opacity here as a fallback "to be safe". It would defeat the
- *   reduced-motion query and hide content from people who asked not to have it
- *   animated.
+ * Do not wrap above-the-fold content in this — content that fades in on first
+ * paint reads as a slow page. The heroes use `data-stagger="load"` instead.
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 

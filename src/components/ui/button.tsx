@@ -28,9 +28,27 @@ import { cn } from "@/lib/utils";
  * A button on a dark band must pass `focus-ring-dark` — the brand green is
  * near-invisible on navy. The contact form's submit is the one such case.
  * `aria-invalid:ring-*` below is untouched: that is an error state, not focus.
+ *
+ * `translate` IS IN THE TRANSITION LIST, AND REMOVING IT UNDOES EVERY LIFT IN
+ * THIS FILE. Tailwind v4 compiles `-translate-y-px` and `translate-y-0` to the
+ * standalone `translate` property rather than to `transform`, so the list named
+ * `transform` and animated nothing: the `brand` and `outline` variants — both
+ * hero CTAs, the contact form's submit, the carousel arrows — snapped a pixel
+ * on the first frame of hover while their shadow eased over 220ms, and the
+ * `active:` press below was instant in both directions. Measured in the browser
+ * on 2026-08-17: computed transitionProperty came back
+ * "color, background-color, border-color, box-shadow, transform" on a button
+ * whose movement was entirely in `translate`.
+ *
+ * The reason it never looked broken is that the shadow WAS transitioning, so
+ * the button read as soft and slightly wrong rather than as janky. The service
+ * cards use Tailwind's `transition-transform` shorthand, which expands to
+ * `transform, translate, scale, rotate` and so never had the bug — which is
+ * also the rule for this list: an explicit property list must spell out
+ * everything the shorthand would have covered.
  */
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform] outline-none select-none focus-ring active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-[color,background-color,border-color,box-shadow,transform,translate] outline-none select-none focus-ring active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {

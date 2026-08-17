@@ -66,9 +66,28 @@ export function Benefits() {
 
       <Carousel opts={{ loop: true, align: "start" }} className="mt-10 w-full">
         <CarouselContent className="-ml-5">
-          {BENEFITS.map((item) => (
+          {BENEFITS.map((item) => {
+            /**
+             * ONE normalised heading, used as BOTH the key and the text.
+             *
+             * These were two expressions before — `key={item.benefit}` raw and
+             * `{item.benefit.trim()}` for display — so a heading with stray
+             * whitespace was trimmed on screen while the untrimmed string
+             * stayed the item's identity. `" Health & Wellness"` shipped that
+             * way and nobody saw it, because the `.trim()` here was quietly
+             * cleaning up after the data.
+             *
+             * That is not a rendering bug — a key only has to be unique and
+             * stable, and a leading space is both. It is worse than a bug: a
+             * workaround that makes bad data invisible. Deriving one value
+             * means the next stray character shows up on the page, where
+             * somebody will notice it.
+             */
+            const heading = item.benefit.trim();
+
+            return (
             <CarouselItem
-              key={item.benefit}
+              key={heading}
               className="pl-5 md:basis-1/2 lg:basis-1/3"
             >
               {/* Opaque --surface on the tinted band, so each card is a light
@@ -94,7 +113,7 @@ export function Benefits() {
                     aria-hidden
                     className="mb-5 h-0.5 w-8 origin-left rounded-full bg-gradient-to-r from-brand to-brand-deep transition-transform duration-220 ease-out group-hover:scale-x-175"
                   />
-                  <h3 className="text-ink">{item.benefit.trim()}</h3>
+                  <h3 className="text-ink">{heading}</h3>
                   <div className="mt-3 space-y-2 text-sm leading-relaxed text-ink-muted">
                     {item.description
                       .split("\n")
@@ -107,7 +126,8 @@ export function Benefits() {
                 </CardContent>
               </Card>
             </CarouselItem>
-          ))}
+            );
+          })}
         </CarouselContent>
         {/* 5s, at the owner's request (2026-08-13).
 

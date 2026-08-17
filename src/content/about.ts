@@ -32,17 +32,19 @@ export const VALUES = [
       "We say what we mean, directly, candidly, and sincerely, but always with empathy and respect.",
   },
   /**
-   * THESE TWO ARE STILL OURS, NOT THE OWNER'S — read them before a launch.
+   * APPROVED BY THE OWNER AS WRITTEN, 2026-08-14. These are the company's
+   * words now. They are not drafts and the note that said so is gone.
    *
-   * They were written here as drafts and marked as such. The 2026-08-14 audit
-   * pulled the marker up as a finding: two of five stated company values were
-   * in the writer's words rather than the owner's, and they read well enough
-   * that nobody would notice. The wording below is a craft pass over those
-   * drafts — the rhythm of the three above, no claim added or removed — which
-   * fixes how they read but NOT whose words they are.
+   * Kept as a record because of how they got here. Both shipped for a while
+   * marked `// DRAFT — pending the owner's own wording`, survived an audit and
+   * two rounds of code review in that state, and read well enough that nobody
+   * would have guessed they were unapproved — which is exactly why a draft in
+   * a comment is a bad place to keep one. Review is what surfaced it; the
+   * owner then read both sentences and adopted them.
    *
-   * The three values above came from the owner. Replace these two with his
-   * wording and delete this block; that is the only thing that closes it.
+   * The distinction worth preserving: the three values above were AUTHORED by
+   * the owner, these two were RATIFIED by him. If the values are ever
+   * revisited, that is the difference between them.
    */
   {
     heading: "Ownership",

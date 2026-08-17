@@ -44,8 +44,8 @@ export const contactSchema = z.object({
     .string()
     .trim()
     .min(1, "Email is required")
-    .email("Please enter a valid email address")
-    .max(200),
+    .max(200)
+    .pipe(z.email("Please enter a valid email address")),
   mobile: z
     .string()
     .min(1, "Mobile number is required")

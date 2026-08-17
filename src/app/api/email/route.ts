@@ -6,12 +6,26 @@
  * it to the support inbox and copies the sender.
  *
  * ── BUSINESS RULES ──
- * - Mail is sent from support@arcompsol.com and delivered to that inbox plus
- *   the person who filled the form, so they have a copy of what they sent.
+ * - NO ADDRESS IS WRITTEN IN THIS FILE. Mail is sent FROM `SMTP_EMAIL`, and
+ *   delivered TO `CONTACT_TO` — or back to `SMTP_EMAIL` when that is unset.
+ *   Both come from the environment, so moving mailboxes is configuration and
+ *   never a code change. See `inboxFor` below for why `from` must be the
+ *   authenticated account specifically.
+ * - IT GOES TO THE BUSINESS ONLY. The person who filled the form is NOT
+ *   copied; the recipient list takes nothing from user input. That is a
+ *   security property rather than a preference — see the note on `to:`.
  * - Additional recipients come from CONTACT_CC (comma-separated). They were
  *   two personal Gmail addresses hardcoded in the original handler; who gets
  *   copied is an operational decision, not a code change.
  * - The subject line is "<their subject> - Contact Form Submission".
+ *
+ *   THESE TWO RULES WERE BOTH STALE, found in review 2026-08-17. The first said
+ *   "sent from support@arcompsol.com" — a hardcoded address removed long
+ *   enough ago that a note further down this same file already explained its
+ *   removal, so one file stated one rule two ways ten lines apart. The second
+ *   still promised the submitter a copy, which had been taken out the same day.
+ *   A header that restates what the code does is worth having only if it is
+ *   changed in the same commit as the code; treat it as part of the diff.
  *
  * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
  * Every field is validated HERE, against the same zod schema the form uses.
@@ -79,8 +93,26 @@ function escapeHtml(value: string) {
  * - ALL FIVE FIELDS APPEAR. The previous version passed only name, mobile and
  *   message, so the sender's own email address and their subject were nowhere
  *   in the body — you could read an enquiry and not know who wrote it.
- * - Goes to the business AND to the submitter, so the wording has to read
- *   sensibly to both. Nothing here may say "you" to one of them.
+ * - GOES TO THE BUSINESS ONLY, as of 2026-08-17. The submitter used to be
+ *   copied; that was removed because the recipient list took a caller-supplied
+ *   address, which is the exposure described on `to:` below. Read that before
+ *   changing anything about who receives this.
+ *
+ *   THE WORDING IS STILL WRITTEN FOR TWO READERS, deliberately. Nothing here
+ *   says "you", and no line assumes the reader is staff. That costs nothing
+ *   now and means the template cannot become wrong by itself if a receipt is
+ *   ever reinstated as a separate message.
+ *
+ *   KEPT BECAUSE OF HOW IT BROKE THE FIRST TIME. `709668c` shipped a "Thank you
+ *   for your interest!" line that made this double as a receipt; `7fe4f2e` —
+ *   titled "standardize code formatting and improve readability across
+ *   components" — rewrote the template 142 to 375 lines and dropped it, while
+ *   the comment on `to:` justifying the copy survived. For two commits the
+ *   submitter received a mail headed NEW ENQUIRY, bylined "from <their own
+ *   name>", closing "Reply to this message and it goes to <their own name>" —
+ *   an internal staff notification about themselves. Found in review,
+ *   2026-08-17. A formatting commit changed what a stranger receives, and
+ *   nothing caught it for two commits.
  *
  * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
  * TABLES AND INLINE STYLES, which is not how the rest of this codebase is
@@ -189,7 +221,7 @@ function buildEmailText(
   // A real plain-text part, not a fallback nobody reads: spam filters score
   // multipart mail with a text alternative better than HTML alone, and some
   // notification previews render this rather than the HTML.
-  return `New enquiry from the Arcompsol website
+  return `Enquiry sent through arcompsol.com
 
 Name:    ${name}
 Email:   ${email}
@@ -200,7 +232,8 @@ Message:
 ${body}
 
 --
-Sent from the contact form at arcompsol.com`;
+Reply to this message and it goes to Arcompsol.
+Contact form · arcompsol.com`;
 }
 
 function buildEmailHtml(
@@ -224,10 +257,10 @@ function buildEmailHtml(
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light">
-<title>New enquiry</title>
+<title>Enquiry</title>
 </head>
 <body style="margin:0;padding:0;background-color:${C.surfaceAlt};">
-<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${safe.subject} &ndash; from ${safe.name}</div>
+<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${safe.subject} &ndash; from ${safe.name}, via arcompsol.com</div>
 
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.surfaceAlt};padding:40px 16px;">
   <tr>
@@ -246,7 +279,10 @@ function buildEmailHtml(
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td style="font-family:${SANS};font-size:17px;font-weight:bold;letter-spacing:-0.01em;color:${C.onDark};">Arcompsol</td>
-                <td align="right" style="font-family:${MONO};font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:${C.onDarkMuted};">New enquiry</td>
+                <!-- "Enquiry", not "New enquiry". "New" is triage language —
+                     it means new TO THE BUSINESS, and the submitter gets this
+                     mail too. See the second BUSINESS RULE above. -->
+                <td align="right" style="font-family:${MONO};font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:${C.onDarkMuted};">Enquiry</td>
               </tr>
             </table>
           </td>
@@ -258,7 +294,7 @@ function buildEmailHtml(
         <tr>
           <td style="padding:34px 40px 0 40px;">
             <p style="margin:0;font-family:${SANS};font-size:27px;line-height:34px;font-weight:600;letter-spacing:-0.02em;color:${C.ink};">${safe.subject}</p>
-            <p style="margin:10px 0 0 0;font-family:${SANS};font-size:15px;line-height:22px;color:${C.inkMuted};">from ${safe.name}</p>
+            <p style="margin:10px 0 0 0;font-family:${SANS};font-size:15px;line-height:22px;color:${C.inkMuted};">Sent by ${safe.name}</p>
           </td>
         </tr>
 
@@ -306,7 +342,7 @@ function buildEmailHtml(
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.surfaceAlt};border-top:1px solid ${C.border};">
               <tr>
                 <td style="padding:20px 40px;font-family:${SANS};font-size:13px;line-height:20px;color:${C.inkMuted};">
-                  Reply to this message and it goes to ${safe.name}.
+                  Reply to this message and it goes to Arcompsol.
                   <span style="display:block;margin-top:6px;font-family:${MONO};font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:${C.inkMuted};">Contact form &middot; arcompsol.com</span>
                 </td>
               </tr>
@@ -323,7 +359,7 @@ function buildEmailHtml(
 }
 
 /**
- * Best-effort rate limit: 5 sends per IP per 10 minutes.
+ * Best-effort rate limit: 5 SEND ATTEMPTS per IP per 10 minutes.
  *
  * ── WHY THIS EXISTS ──
  * This is an UNAUTHENTICATED endpoint that makes an outbound email on demand.
@@ -333,34 +369,85 @@ function buildEmailHtml(
  * relay. The limit is the difference between abuse being annoying and abuse
  * taking the contact channel offline.
  *
+ * ── IT COUNTS SENDS, NOT REQUESTS, AND THAT IS THE WHOLE POINT ──
+ * The read and the write are SEPARATE FUNCTIONS on purpose. They used to be one
+ * `rateLimited(ip)` called at the top of the handler, which recorded a hit on
+ * every request that reached it — before the JSON was parsed, before the schema
+ * ran, before the SMTP config was even checked. Code review, 2026-08-17, caught
+ * what that means for a person rather than an attacker:
+ *
+ *   - Five rejected validations and they are locked out for ten minutes. A
+ *     mistyped email address four times over is not abuse.
+ *   - Five 500s because SMTP is misconfigured and they are locked out for ten
+ *     minutes ON TOP of a failure that was ours, not theirs — and the failure
+ *     mode is invisible, because the form reports it as a rate limit.
+ *
+ * `recordSendAttempt` is therefore called at the point a send is ABOUT TO
+ * HAPPEN, so a 400 and a "not configured" 500 cost the caller nothing.
+ *
+ * IT RECORDS THE ATTEMPT, NOT THE SUCCESS, and that distinction is deliberate.
+ * Counting only successful sends reads as more generous and is a hole: anyone
+ * who can reliably make `sendAsync` throw — a bad recipient domain, a
+ * deliberately oversized payload — would get unlimited attempts against the
+ * SMTP server. The scarce resource is the connection and the daily quota, and
+ * a failed send has already spent one.
+ *
  * ── KNOW ITS LIMITS BEFORE TRUSTING IT ──
  * In-memory, so it is PER SERVER INSTANCE. On a platform that runs several
  * instances or scales to zero, an attacker gets the allowance once per
  * instance and a restart clears it. It stops casual abuse and accidental
- * double-posting; it is NOT a defence against a determined flood. Put a real
- * limiter (an edge rule, or a shared store) in front of this if that matters.
+ * double-posting; it is NOT a defence against a determined flood.
  *
- * The map is pruned on write, so it cannot grow without bound from one-off
- * callers — a long-lived instance would otherwise keep every IP that ever
- * posted.
+ * A CONSEQUENCE OF METERING SENDS: invalid requests are now UNMETERED. Posting
+ * malformed JSON in a loop is refused every time and costs this handler a JSON
+ * parse and a zod parse, but nothing throttles it. That is an accepted trade at
+ * this scale — no mail is sent and no quota is consumed — and it is the same
+ * sentence as before: put a real limiter (an edge rule, or a shared store) in
+ * front of this if a determined flood matters.
+ *
+ * ── DO NOT ──
+ * - Do not move `recordSendAttempt` back to the top of the handler. That is the
+ *   bug above, and it presents to the person as a rate limit they did not earn.
+ * - Do not make the read record anything. `overSendLimit` must stay side-effect
+ *   free, or every rejected request extends its own lockout.
  */
 const RATE_LIMIT = { max: 5, windowMs: 10 * 60 * 1000 };
 const hits = new Map<string, number[]>();
 
-function rateLimited(ip: string) {
+/** This IP's attempts still inside the window. */
+function liveHits(ip: string, now: number) {
+  const cutoff = now - RATE_LIMIT.windowMs;
+  return (hits.get(ip) ?? []).filter((t) => t > cutoff);
+}
+
+/**
+ * Has this IP used its allowance? READ ONLY — it records nothing.
+ *
+ * It filters by the window itself rather than relying on the prune in
+ * `recordSendAttempt`. It has to: once an IP is over the limit it stops
+ * reaching the write path entirely, so a read that trusted the stored array
+ * would see a permanently full bucket and lock that caller out forever.
+ */
+function overSendLimit(ip: string) {
+  return liveHits(ip, Date.now()).length >= RATE_LIMIT.max;
+}
+
+/** Spends one of this IP's five. Call once, immediately before a send. */
+function recordSendAttempt(ip: string) {
   const now = Date.now();
   const cutoff = now - RATE_LIMIT.windowMs;
 
+  // Pruned on write, so the map cannot grow without bound from one-off callers
+  // — a long-lived instance would otherwise keep every IP that ever posted.
+  // Write is also the only path that ADDS an entry, so pruning here is enough
+  // to bound it.
   for (const [key, times] of hits) {
     const live = times.filter((t) => t > cutoff);
     if (live.length) hits.set(key, live);
     else hits.delete(key);
   }
 
-  const mine = hits.get(ip) ?? [];
-  if (mine.length >= RATE_LIMIT.max) return true;
-  hits.set(ip, [...mine, now]);
-  return false;
+  hits.set(ip, [...liveHits(ip, now), now]);
 }
 
 export async function POST(request: Request) {
@@ -372,7 +459,10 @@ export async function POST(request: Request) {
     request.headers.get("x-real-ip") ||
     "unknown";
 
-  if (rateLimited(ip)) {
+  // READ ONLY. The matching write is `recordSendAttempt(ip)` further down, at
+  // the point a send actually happens — see the note on the limiter for why
+  // the two are not one call any more.
+  if (overSendLimit(ip)) {
     return NextResponse.json(
       { message: "Too many messages. Try again shortly." },
       { status: 429, headers: { "Retry-After": "600" } },
@@ -384,6 +474,32 @@ export async function POST(request: Request) {
     payload = await request.json();
   } catch {
     return NextResponse.json({ message: "Invalid JSON body" }, { status: 400 });
+  }
+
+  /**
+   * ── HONEYPOT ──
+   * A field no human can see, tab to, or hear. `contact-form.tsx` renders it
+   * `sr-only`, `aria-hidden`, `tabIndex={-1}`, `autoComplete="off"`. Anything
+   * in it was put there by something filling every input it could find.
+   *
+   * IT ANSWERS 200, NOT 400, and that is the one deliberate lie in this file.
+   * A rejection teaches a bot which field to leave alone and it is back in a
+   * day; silence teaches it nothing. The `console.warn` is what keeps this from
+   * being the silent-failure this codebase otherwise forbids — if a real person
+   * ever trips it, the send is traceable in the log rather than gone.
+   *
+   * IT IS CHECKED BEFORE `recordSendAttempt`, so a bot cannot burn a real
+   * visitor's allowance from a shared NAT address.
+   *
+   * KNOW WHAT IT IS NOT. This stops indiscriminate form-fillers, which is most
+   * of the volume. It does NOT stop anyone who looks at the markup once — the
+   * field is in the HTML and skipping it is a one-line change. It is a filter,
+   * not a control. See the note on `to:` for the exposure it does not address.
+   */
+  const trap = (payload as { website?: unknown } | null)?.website;
+  if (typeof trap === "string" && trap.trim() !== "") {
+    console.warn(`[contact] honeypot tripped by ${ip} — discarded, not sent`);
+    return NextResponse.json({ message: "Sent" });
   }
 
   const parsed = contactSchema.safeParse(payload);
@@ -414,6 +530,10 @@ export async function POST(request: Request) {
     .map((address) => address.trim())
     .filter(Boolean);
 
+  // The mailbox that actually reads enquiries. Used as a recipient AND as the
+  // reply-to, so the two can never disagree about where a reply lands.
+  const inbox = inboxFor(user);
+
   const client = new SMTPClient({
     user,
     password,
@@ -421,6 +541,13 @@ export async function POST(request: Request) {
     port: Number(process.env.SMTP_PORT ?? 465),
     ssl: true,
   });
+
+  // THE ALLOWANCE IS SPENT HERE, and this line's position is the fix. Every
+  // early return above it — bad JSON, a failed schema, missing SMTP config —
+  // now costs the caller nothing, because none of them sends mail. From this
+  // point a connection is made, so the attempt counts whether or not it
+  // succeeds.
+  recordSendAttempt(ip);
 
   try {
     await client.sendAsync({
@@ -438,12 +565,54 @@ export async function POST(request: Request) {
         },
       ],
       from: user,
-      // The submitter is copied deliberately — the template thanks them, so it
-      // doubles as their receipt.
-      to: [inboxFor(user), email],
-      // Replying to an enquiry should reach the PERSON, not the mailbox that
-      // sent it. Without this, hitting reply in Gmail addresses yourself.
-      "reply-to": email,
+      /**
+       * ONE RECIPIENT, AND IT IS A FIXED ONE. Do not add a caller-supplied
+       * address back to this array.
+       *
+       * ── WHAT THIS USED TO BE ──
+       * `to: [inbox, email]`, where `email` is the address typed into the form.
+       * The submitter got a copy, as their record of what they sent. That was
+       * a real convenience and it is what was given up here.
+       *
+       * ── WHY IT HAD TO GO (owner's call, 2026-08-17) ──
+       * Nobody has to use the form. Any unauthenticated POST supplies both the
+       * recipient AND up to 5,000 characters of body, so that array let a
+       * stranger send mail of their own composition, to an address of their
+       * choosing, FROM THIS DOMAIN — passing SPF and DKIM, because it genuinely
+       * is from this domain. The doc-block on the rate limiter calls that "the
+       * shape of an open relay" and it was right.
+       *
+       * The rate limit does not address this and neither does the honeypot. A
+       * limiter caps the volume; a honeypot filters the naive. Neither stops
+       * one deliberate request, and one is all a phishing mail takes. The only
+       * fix is the endpoint refusing to choose its recipient from user input,
+       * which is this line.
+       *
+       * Worst case now: somebody fills this inbox with junk. That is a nuisance
+       * with a delete key, not a mail sent AS Arcompsol to a client.
+       *
+       * ── IF A RECEIPT IS EVER WANTED ──
+       * Send it as a SEPARATE message with fixed content — no name, no subject,
+       * no body from the submission. The moment attacker-controlled text rides
+       * to an attacker-controlled address, this is back, whatever the second
+       * message is called. The form's on-screen toast is the acknowledgement
+       * until then.
+       */
+      to: [inbox],
+      // REPLIES GO TO ARCOMPSOL, NOT TO THE ENQUIRER — owner's call,
+      // 2026-08-17, reversing what this line used to do.
+      //
+      // It was `email`, so the business could hit Reply and reach the person.
+      // That is the action that happens daily and losing it is a real cost.
+      // The reason it went anyway: this mail is delivered to BOTH parties and
+      // there is only one reply-to header, so it can serve only one of them.
+      // Pointed at the enquirer, the footer could never honestly tell them how
+      // to follow up — their own Reply addressed themselves.
+      //
+      // THE BUSINESS KEEPS A ONE-TAP ROUTE TO THE PERSON: their address is a
+      // mailto link in the contact block above. That is what makes this trade
+      // affordable, so do not remove that link without revisiting this.
+      "reply-to": inbox,
       ...(cc.length ? { cc } : {}),
       subject: `${subject} - Contact Form Submission`,
     });

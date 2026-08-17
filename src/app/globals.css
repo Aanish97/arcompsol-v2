@@ -279,9 +279,25 @@
    It costs one line and it is the guard, not the leftover. Delete it and the
    next `npx shadcn add` quietly reintroduces the bug.
 
-   To add real dark mode later: define the tokens here, mount a provider, and
-   budget for the 49 hardcoded white/navy literals across 10 components that
-   currently assume "light page, dark footer". */
+   To add real dark mode later: define the tokens here and mount a provider.
+   The component layer is ready for it — RE-COUNTED 2026-08-17, and the answer
+   is not what this note used to say.
+
+   It claimed "49 hardcoded white/navy literals across 10 components". The real
+   figure is ZERO. Every colour in a rendered className resolves through a
+   token; the only hex in any .tsx is inside a comment, except app/
+   opengraph-image.tsx, where satori renders at build time with no CSS custom
+   properties to read and literals are the only option. The string "white"
+   survives in exactly three places and none of them is a colour: two
+   `whitespace-*` utilities, a BrandLogo variant name, and a filename.
+
+   The real cost is the other thing: the site assumes "light page, dark footer"
+   STRUCTURALLY. The `on-dark`, `night-*` and `brand-on-dark` families exist
+   because a band's ground is a fixed design decision, not a theme — see the
+   milestones band, which switches its own panel colours on a breakpoint. Dark
+   mode has to answer what those tokens mean when the page is already dark, and
+   that is a design question, not a find-and-replace. Do not re-derive the
+   budget from a grep for literals; there aren't any. */
 
 @layer base {
   * {
@@ -958,6 +974,41 @@
   }
 }
 
+/* ── A field's error message arriving ─────────────────────────────────────
+   Paired with the `Field` component in layout/contact-fields.tsx.
+
+   150ms, which is the feedback tier and NOT the 700ms every arrival on this
+   site uses. A reveal is content coming to meet you; this is the form
+   answering a button you just pressed, and a slow answer reads as latency.
+   It is also the reason the distance is 2px rather than the reveal's 16px:
+   the message has to be noticed, not travelled to.
+
+   It moves DOWNWARD into place because that is the direction the field
+   actually grows — the message is appended below the control and pushes the
+   fieldset open under it. Rising up into a box that is itself opening
+   downward is two motions disagreeing about the same 16px.
+
+   AN ANIMATION, NOT A TRANSITION, because the element is MOUNTED on error
+   rather than revealed: React inserts it, and a transition needs a starting
+   frame on an element that was already in the tree.
+
+   Inside the motion query, so a reduced-motion reader gets the message with
+   no entrance at all. `role="alert"` announces it either way — the animation
+   is for the people who can see it appear, and the announcement is what
+   carries it for everyone else.                                            */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes field-error-in {
+    from {
+      opacity: 0;
+      transform: translateY(-2px);
+    }
+  }
+
+  .field-error {
+    animation: field-error-in 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
 @layer utilities {
   /* Soft brand-tinted glow behind the hero. Two offset radial gradients rather
      than an image: no request, no layout cost, and it scales to any viewport. */
@@ -1255,7 +1306,11 @@
     --band-feather: clamp(72px, 11vh, 168px);
     background-color: var(--surface-alt);
     background-image:
-      linear-gradient(to bottom, var(--surface) 0, transparent var(--band-feather)),
+      linear-gradient(
+        to bottom,
+        var(--surface) 0,
+        transparent var(--band-feather)
+      ),
       linear-gradient(to top, var(--surface) 0, transparent var(--band-feather));
   }
 
@@ -1352,11 +1407,34 @@
         color-mix(in oklab, var(--surface) 82%, transparent) 0%,
         color-mix(in oklab, var(--surface) 93%, transparent) 100%
       ),
-      url("/images/pexels-photo-by-sora-shimazaki.jpg");
+      url("/images/pexels-photo-by-sora-shimazaki.webp");
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
   }
+
+  /* WEBP, AND IT IS THE ONE IMAGE ON THE SITE next/image NEVER TOUCHED. A CSS
+     `background-image` goes out exactly as authored — no format negotiation, no
+     responsive sizes, no lazy loading — while every <Image> on the site is
+     re-encoded and served at a fraction of its source. The gap was not small:
+     840 kB of source images across the site serve as 54 kB, and this single
+     decorative photo was 137.6 kB on its own, above the fold on /about.
+
+     1444x700, re-encoded at quality 80 with sharp (already a Next dependency):
+     140,878 -> 32,146 bytes, 77% off, no markup change and no visual change —
+     the photo sits under a brand radial wash and a --surface linear wash at
+     82-93%, so it is heavily veiled before it is ever seen. Measured q60/70/78/
+     85 at 21.7/24.6/29.7/42.7 kB and took 80 for headroom rather than the
+     smallest number.
+
+     NO JPEG FALLBACK, deliberately. Every browser this project supports has
+     taken WebP since 2020, and next/image already serves WebP/AVIF to all of
+     them with no fallback anywhere else on the site — a <picture> dance here
+     would be a stricter baseline than the other sixteen images get.
+
+     The .jpg is still in public/images as the unedited source. Nothing
+     references it, so nothing downloads it; keep it or delete it, but do not
+     re-point this rule at it. */
 
   /* ── Services panel ───────────────────────────────────────────────────
      The tinted slab the six service tiles sit on.
@@ -1657,6 +1735,110 @@
       animation-delay: -3.7s;
     }
   }
+}
+
+/* ── AUTOFILLED FIELDS ON THE NAVY PANEL ────────────────────────────────────
+   IN SIMPLE WORDS: when you pick your name, email or number from the browser's
+   own drop-down, Chrome repaints that box pale blue with dark text. On the dark
+   footer panel one field would suddenly go white while the four beside it
+   stayed dark. This paints it back.
+
+   Chrome fills an autofilled control with `background-color: rgb(232,240,254)`
+   from an INTERNAL pseudo-class (`:-internal-autofill-selected`) that page CSS
+   cannot select and, being a UA-origin rule, is not beaten by specificity, by
+   `!important`, or by cascade layers. `background`, `background-color` and
+   Tailwind's `bg-*` on the input all lose to it. Two properties are the
+   documented way out and they are the only two: a large INSET `box-shadow`,
+   which paints over the UA background inside the border box without touching
+   layout, and `-webkit-text-fill-color`, which overrides the glyph colour that
+   `color` cannot while the control is autofilled. `caret-color` is a third,
+   separate fix — without it the cursor stays UA-dark and is invisible.
+
+   ── UNLAYERED ON PURPOSE, AND THE RING IS RESTATED HERE ──
+   This block is deliberately OUTSIDE `@layer`. It lived in `@layer components`
+   first and was measured failing: focus a field, and Tailwind's
+   `focus-visible:ring-3` — a `@layer utilities` rule, and utilities come after
+   components — replaced the whole `box-shadow` property, our inset cover with
+   it, and Chrome's blue came straight back. Confirmed on the live page: the
+   focused field computed the ring stack with no inset shadow in it while the
+   unfocused one beside it still had `rgb(28, 46, 43) 0 0 0 1920px inset`.
+   Unlayered author styles beat every layer, which is the only thing that wins
+   here.
+
+   That fix creates the second problem this block has to solve. `box-shadow` is
+   ONE property, so whichever rule wins sets all of it — an unlayered cover
+   would silently delete the focus ring and the error ring from autofilled
+   fields. So both are restated below, composed WITH the cover rather than
+   against it.
+
+   THE THREE RING VALUES BELOW MIRROR `FIELD` IN contact-fields.tsx. If the ring
+   width or colour changes there, change it here in the same commit; there is no
+   way to share the value, because FIELD is Tailwind classes and this is the
+   property they compile to. `ring-3` is 3px and `/30`, `/25` compile to exactly
+   the `color-mix(in oklab, …, transparent)` forms used here — verified against
+   the computed value on the live page.
+
+   ONE RULE ON THE FORM, not a class per input, because the phone field's real
+   <input> is created by react-phone-number-input and never receives FIELD's
+   classes — it is only reachable as `.PhoneInputInput`. A descendant selector
+   covers it, the four ordinary fields, and any field added later.
+
+   DO NOT convert this to Tailwind's `autofill:` variant — it emits the same
+   declarations back into `@layer utilities`, which is the bug above. DO NOT use
+   the `transition: background-color 100000s` trick sometimes suggested instead
+   of the box-shadow: it only postpones the repaint, so the field still flashes
+   white and comes back on any later one. */
+.fields-on-dark :is(input, textarea, select):autofill {
+  /* 100vmax rather than a pixel guess: the spread must exceed the largest field
+     on any viewport, and the message box is 7rem tall at 320px and taller at
+     1920. A fixed 1000px is the usual value and would be fine today; this one
+     cannot be outgrown. */
+  --autofill-cover: inset 0 0 0 100vmax var(--night-field);
+  box-shadow: var(--autofill-cover);
+  -webkit-text-fill-color: var(--on-dark);
+  caret-color: var(--on-dark);
+}
+
+/* Hover and active are separate UA rules carrying the same background, so the
+   cover has to survive them too or the field flashes white on touch. */
+.fields-on-dark :is(input, textarea, select):is(:hover, :active):autofill {
+  box-shadow: var(--autofill-cover);
+}
+
+/* ── THE RING BRANCHES SKIP THE PHONE INPUT, AND MUST ──────────────────────
+   `.PhoneInputInput` DOES NOT OWN ITS RING. The four ordinary fields carry
+   `FIELD` themselves, so restating the ring on them replaces what the utility
+   would have drawn. The phone field is the odd one out: `FIELD` sits on the
+   react-phone-number-input WRAPPER, which draws the ring with `focus-within`,
+   while the real <input> inside it has no ring, no border and `border-radius:
+   0`. Restating the ring there ADDS one instead of replacing it — so an
+   autofilled, focused phone field drew two: the wrapper's rounded ring and a
+   second sharp-cornered rectangle inside it, reported from a screenshot.
+
+   Confirmed by sampling computed styles on the live page while focused, rather
+   than after the fact: wrapper `box-shadow` held the 3px brand/30 ring, the
+   input's was `none`. The cover above still applies to the phone input — it
+   needs it, that is the field the whole fix started from. Only the rings skip
+   it. */
+
+/* Focus ring == `focus-visible:ring-3 focus-visible:ring-brand/30` on FIELD. */
+.fields-on-dark
+  :is(input, textarea, select):not(.PhoneInputInput):autofill:focus-visible {
+  box-shadow:
+    var(--autofill-cover),
+    0 0 0 3px color-mix(in oklab, var(--brand) 30%, transparent);
+}
+
+/* Error ring == `aria-invalid:ring-3 aria-invalid:ring-danger-on-dark/25`.
+   Last, so an autofilled field that is BOTH focused and invalid shows the error
+   colour — the same precedence FIELD gives them. */
+.fields-on-dark
+  :is(input, textarea, select):not(
+    .PhoneInputInput
+  ):autofill[aria-invalid="true"] {
+  box-shadow:
+    var(--autofill-cover),
+    0 0 0 3px color-mix(in oklab, var(--danger-on-dark) 25%, transparent);
 }
 
 /**

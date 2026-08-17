@@ -26,6 +26,7 @@
  */
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { CONTACT } from "@/content/site";
 import { cn } from "@/lib/utils";
 
 export function ValueCard({
@@ -129,6 +130,14 @@ export function JobCard({
         >
           {/* mailto rather than an onClick that console.logs, which is what the
               original did — the button looked live and did nothing. */}
+          {/* CONTACT.email, NOT a literal. This was a hardcoded
+              `careers@arcompsol.com` — a fourth copy of the company address in
+              a fourth file, which is the exact failure content/site.ts exists
+              to prevent: "how a changed address ends up updated in one place
+              and stale in the others". Applications now land in the same inbox
+              as enquiries (owner's call, 2026-08-17). If a separate careers
+              mailbox is ever set up, add it to CONTACT and point this at that
+              field — do not retype an address here. */}
           {/* NO className. `Button asChild` renders through Radix Slot, which
               CONCATENATES the child's classes with the button's rather than
               running them through tailwind-merge — so anything set here lands
@@ -136,9 +145,7 @@ export function JobCard({
               `rounded-lg focus-ring`: the first was already on the base (it
               shipped twice in the HTML), and the second would now paint a
               second focus outline over the one the base draws. */}
-          <a
-            href={`mailto:careers@arcompsol.com?subject=Application: ${title}`}
-          >
+          <a href={`mailto:${CONTACT.email}?subject=Application: ${title}`}>
             Apply now
           </a>
         </Button>

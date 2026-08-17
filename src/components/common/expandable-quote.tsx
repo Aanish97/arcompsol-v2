@@ -1,45 +1,22 @@
 "use client";
 
 /**
- * A testimonial quote that is clamped on phones and opened with a button.
+ * A testimonial quote, clamped on phones and opened in place.
  *
- * ── IN SIMPLE WORDS ──
- * These quotes run 60–100 words each. On a laptop that is a comfortable
- * paragraph; on a phone it is eleven lines, and five of them in a row turn the
- * page into a wall of text nobody scrolls to the end of. So on a phone each
- * quote shows its first few lines with a "Read more" underneath, and opens in
- * place when tapped. On a tablet and up the whole quote is simply shown.
+ * THE FULL QUOTE IS ALWAYS IN THE HTML — the clamp is CSS (`line-clamp-6
+ * md:line-clamp-none`), never a substring. These are attributed statements, so
+ * truncating the markup would hide half of what someone put their name to and
+ * take it from search engines and screen readers as well.
  *
- * ── BUSINESS RULES ──
- * - The full quote is ALWAYS in the HTML. Clamping is visual only. These are
- *   attributed statements by named people; truncating them in the markup would
- *   hide half of what someone put their name to, and would take it away from
- *   search engines and screen readers too.
- *
- * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
- * The button renders only when the text actually overflows its clamp, measured
- * after mount by comparing scrollHeight to clientHeight. A "Read more" that
- * expands nothing is worse than no button, and a future testimonial short
- * enough to fit would get one otherwise.
- *
- * `overflows` starts false so the server HTML and the first client render
- * agree — measuring during render would mismatch and React would discard the
- * tree. The button appears one frame later, which is invisible in practice.
- *
- * The clamp is CSS (`line-clamp-6 md:line-clamp-none`), not a substring. That
- * is what keeps the full text in the DOM, and it means the breakpoint is
- * handled by the stylesheet rather than by a resize listener that would run on
- * every frame of an orientation change.
- *
- * ── DO NOT ──
- * - Do not slice the string to a character count. It cuts mid-word, it cannot
- *   know the viewport, and it removes the text from the accessibility tree.
- * - Do not clamp the featured quote. Someone reached this page by tapping that
- *   specific one; hiding it behind a button is the one thing the click asked
- *   not to happen.
+ * THE BUTTON RENDERS ONLY WHEN THE TEXT ACTUALLY OVERFLOWS, measured after
+ * mount by comparing scrollHeight to clientHeight — a "Read more" that expands
+ * nothing is worse than none. `overflows` starts false so the server HTML and
+ * the first client render agree; measuring during render would mismatch and
+ * React would throw the tree away. The button appears a frame later.
  */
 import { useEffect, useRef, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export function ExpandableQuote({
@@ -51,21 +28,11 @@ export function ExpandableQuote({
   text: string;
   className?: string;
   /**
-   * CONTROLLED by the carousel, not held here, because two other behaviours
-   * depend on knowing whether a quote is open:
-   *
-   *   1. The slides are a flex row and therefore all as tall as the TALLEST.
-   *      One open quote stretches every other slide to match, so swiping to a
-   *      collapsed one shows a card with a slab of empty space under its text.
-   *      Measured at 390px: 354px collapsed, 514px with one quote open, and
-   *      the others stay 514 until it closes. The carousel clears this on
-   *      slide change to keep the track one height.
-   *   2. Autoplay must not advance while a quote is open. Someone who tapped
-   *      "Read more" is mid-sentence; moving the carousel under them is the
-   *      worst possible moment to do it.
-   *
-   * Both need the answer OUTSIDE this component, so the state lives there and
-   * this renders what it is told.
+   * CONTROLLED by the carousel, because two behaviours outside this component
+   * need the answer: the slides are a flex row and all take the height of the
+   * tallest, so one open quote stretches every other slide (354px → 514px at
+   * 390px, measured); and autoplay holds while a quote is open, so nobody is
+   * moved off a sentence they just opened.
    */
   expanded: boolean;
   onToggle: () => void;
@@ -104,14 +71,19 @@ export function ExpandableQuote({
       </blockquote>
 
       {overflows ? (
-        <button
+        <Button
           type="button"
+          variant="link"
+          size="sm"
           onClick={onToggle}
           aria-expanded={expanded}
-          className="mt-3 inline-flex min-h-11 items-center rounded-md text-sm font-medium text-brand transition-colors hover:text-brand-deep focus-ring md:hidden"
+          // min-h-11 CORRECTS size="sm", which is h-7. This is `md:hidden`, so
+          // it exists only on phones — the one place 44px is not optional.
+          // px-0 drops sm's padding so the label keeps the quote's left edge.
+          className="mt-3 min-h-11 px-0 text-brand hover:text-brand-deep md:hidden"
         >
           {expanded ? "Show less" : "Read more"}
-        </button>
+        </Button>
       ) : null}
     </div>
   );

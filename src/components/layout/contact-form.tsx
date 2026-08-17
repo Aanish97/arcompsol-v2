@@ -33,6 +33,21 @@
  * Validation comes from the shared zod schema, the same object the API route
  * uses. See lib/contact-schema.ts for why that sharing is load-bearing.
  *
+ * ── WHERE THE REST OF IT LIVES ──
+ * Split on review, 2026-08-17, at 517 lines. Two files came out and the seams
+ * are worth knowing, because both still have ties back here:
+ *
+ *   contact-fields.tsx  FIELD, Field, GroupLabel, BODY_MAX, BodyCounter — what
+ *                       a field IS, with none of what this form asks for.
+ *   phone-field.tsx     the whole mobile control. A third of this file's markup
+ *                       for one of five fields, and all of it about one
+ *                       library's defaults rather than about the enquiry.
+ *
+ * FIELD is exported from contact-fields.tsx rather than declared in either
+ * consumer, because both use it: the four ordinary inputs put it on a real
+ * <input> and the phone control puts it on a wrapper <div>. globals.css names
+ * it in the autofill block and that pointer now points at contact-fields.tsx.
+ *
  * ── DO NOT ──
  * - Do not clear the fields before the request resolves. On a failed send the
  *   person would have to retype everything, and this is the only way to contact
@@ -43,143 +58,23 @@
  */
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ArrowRight, Loader2 } from "lucide-react";
-import { useId } from "react";
-import { Controller, useForm, useWatch, type Control } from "react-hook-form";
-import PhoneInput from "react-phone-number-input";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 
+import {
+  BODY_MAX,
+  BodyCounter,
+  FIELD,
+  Field,
+  GroupLabel,
+} from "@/components/layout/contact-fields";
+import { PhoneField } from "@/components/layout/phone-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CONTACT } from "@/content/site";
 import { contactSchema, type ContactInput } from "@/lib/contact-schema";
 import { cn } from "@/lib/utils";
-
-import "react-phone-number-input/style.css";
-
-/** Fields sit on the navy panel, so they are lifted out of it rather than drawn on it. */
-const FIELD = cn(
-  "h-11 rounded-xl border-night-line bg-night-field px-4 text-on-dark placeholder:text-on-dark-muted/70",
-  "transition-colors focus-visible:border-brand focus-visible:ring-brand/30",
-  "aria-invalid:border-danger-on-dark/70 aria-invalid:ring-danger-on-dark/25",
-);
-
-/**
- * One labelled field: caption, control, and its error message.
- *
- * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
- * THE ERROR LIVES OUTSIDE THE <label>, and the control is tied to the label by
- * id rather than by being wrapped in it. Both matter, and the earlier version
- * got both wrong by putting everything inside one <label>:
- *
- * An accessible name is the label's whole text content, so an error rendered
- * inside the label was CONCATENATED INTO THE FIELD'S NAME. Measured on the
- * live page: with an error showing, the name field announced as
- * "NamePlease enter your name" — the error became part of what the field is
- * called, not a description of what went wrong, and it stayed that way for
- * every later focus.
- *
- * `role="alert"` is what actually announces the error the moment it appears.
- * Without it a screen-reader user submits, hears nothing, and is left with a
- * form that silently refused. `aria-describedby` is the other half: it ties
- * the message to the control so it is read again on any later focus. One
- * without the other covers only half the journey.
- *
- * A RENDER PROP, not `children`, because those ids have to reach the real
- * input element — and one of the five controls is a third-party PhoneInput
- * that needs them forwarded through its own prop. Passing plain children left
- * no way to hand them down without cloneElement guesswork.
- *
- * ── DO NOT ──
- * - Do not move the error back inside the <label>. See the measured name above.
- * - Do not drop `aria-required`. Every field in contactSchema is required, and
- *   without it that is discoverable only by failing a submit.
- */
-function Field({
-  label,
-  error,
-  children,
-  className,
-}: {
-  label: string;
-  error?: string;
-  children: (props: {
-    id: string;
-    "aria-describedby"?: string;
-    "aria-invalid": boolean;
-    "aria-required": true;
-  }) => React.ReactNode;
-  className?: string;
-}) {
-  const id = useId();
-  const errorId = `${id}-error`;
-
-  return (
-    <div className={cn("flex flex-col gap-2", className)}>
-      <label
-        htmlFor={id}
-        className="text-xs font-medium tracking-wide text-on-dark-muted"
-      >
-        {label}
-      </label>
-      {children({
-        id,
-        "aria-describedby": error ? errorId : undefined,
-        "aria-invalid": !!error,
-        "aria-required": true,
-      })}
-      {error && (
-        <span id={errorId} role="alert" className="text-xs text-danger-on-dark">
-          {error}
-        </span>
-      )}
-    </div>
-  );
-}
-
-/** Mirrors contactSchema's `body.max()`. Both must move together. */
-const BODY_MAX = 5000;
-
-/**
- * Live character count for the message, shown only near the limit.
- *
- * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
- * ITS OWN COMPONENT, subscribing with useWatch. Calling `watch("body")` in
- * ContactForm would re-render the entire form on every keystroke — the exact
- * regression the file's header describes escaping when it dropped five
- * useState values. Only this <p> re-renders now.
- *
- * Hidden until 90% of the limit. A counter on an empty box is pressure; a
- * counter at 4,500 characters is information. Nobody writing a normal enquiry
- * ever sees it.
- *
- * It exists because `maxLength` alone TRUNCATES SILENTLY: paste 6,000
- * characters and the last 1,000 vanish with no indication. The cap stops the
- * overrun, this explains it.
- */
-function BodyCounter({ control }: { control: Control<ContactInput> }) {
-  const value = useWatch({ control, name: "body" }) ?? "";
-  if (value.length < BODY_MAX * 0.9) return null;
-
-  return (
-    <p
-      // polite, not assertive: it updates on every keystroke near the limit
-      // and must not interrupt what is being typed.
-      aria-live="polite"
-      className="text-xs tabular-nums text-on-dark-muted"
-    >
-      {value.length.toLocaleString()} / {BODY_MAX.toLocaleString()} characters
-    </p>
-  );
-}
-
-function GroupLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-xs font-semibold tracking-[0.18em] text-brand-on-dark uppercase">
-      {children}
-    </p>
-  );
-}
 
 export function ContactForm() {
   const {
@@ -193,12 +88,37 @@ export function ContactForm() {
     defaultValues: { name: "", email: "", mobile: "", subject: "", body: "" },
   });
 
-  async function onSubmit(values: ContactInput) {
+  /**
+   * The honeypot's value, read off the submitted FORM rather than through
+   * react-hook-form or a ref.
+   *
+   * IT CANNOT GO THROUGH THE RESOLVER. zod strips keys the schema does not
+   * declare, so a registered `website` would be parsed away before `values`
+   * ever reached this function and the server would have nothing to check.
+   * Adding it to contactSchema instead would put a decoy field in the object
+   * the API route validates real enquiries against, which is worse.
+   *
+   * NOT A REF EITHER, and that is a lint rule rather than a preference:
+   * `react-hooks/refs` rejects passing a ref-reading closure to `handleSubmit`,
+   * because a function handed over during render may read `.current` during
+   * render. `handleSubmit` already forwards the submit event, so the form
+   * element is available without one — and reading the field off the form that
+   * was actually submitted is more direct than reaching for the node by id.
+   */
+  async function onSubmit(
+    values: ContactInput,
+    event?: React.BaseSyntheticEvent,
+  ) {
+    const form = event?.target as HTMLFormElement | undefined;
+    const trap =
+      (form?.elements.namedItem("website") as HTMLInputElement | null)?.value ??
+      "";
+
     try {
       const response = await fetch("/api/email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, website: trap }),
         // A HANG IS A FAILURE MODE OF ITS OWN. Without this, a request that
         // never resolves leaves the fieldset disabled and the button spinning
         // for as long as the tab is open, with no way to retry — worse than an
@@ -245,17 +165,51 @@ export function ContactForm() {
 
   return (
     <form
-      id="contact-form"
       onSubmit={handleSubmit(onSubmit)}
       noValidate
-      // scroll-mt-20 because this is an ANCHOR TARGET, not decoration. Both
-      // "Let's talk" buttons scrollIntoView() here, and the header is sticky
-      // at 73px — without a scroll margin the form landed at y=0 and the
-      // "Your details" label sat at y=33, behind the header. 80px matches the
-      // scroll-mt-20 already on #services and the two careers anchors; keep
-      // them equal, and above the header height on every breakpoint.
-      className="w-full max-w-xl scroll-mt-20 rounded-2xl border border-night-line bg-night-alt p-6 md:p-8"
+      // NO id, AND NO scroll-mt. Both moved to the wrapper in site-footer.tsx
+      // on 2026-08-17. This element is inside a next/dynamic ssr:false chunk,
+      // so an anchor on it is missing from every page's server HTML and absent
+      // until hydration — which left "Let's talk" doing nothing for the first
+      // second of every page view. An anchor has to be somewhere that always
+      // exists. Do not put it back here.
+      //
+      // fields-on-dark repaints Chrome's autofill background, which is a
+      // UA-origin colour that bg-* on the inputs cannot touch — see globals.css.
+      // It sits on the FORM rather than on FIELD because the phone field's real
+      // <input> belongs to react-phone-number-input and never gets FIELD.
+      className="fields-on-dark w-full max-w-xl rounded-2xl border border-night-line bg-night-alt p-6 md:p-8"
     >
+      {/* ── HONEYPOT ──────────────────────────────────────────────────────
+          Not a field. A trap for anything that fills every input it finds,
+          checked server-side in api/email/route.ts — read the note there for
+          what it does and does not stop.
+
+          FOUR ATTRIBUTES, ALL FOUR REQUIRED, and each closes a different way
+          in. `sr-only` takes it off screen without `display:none`, which some
+          bots skip. `aria-hidden` keeps it out of the accessibility tree, so a
+          screen-reader user is never offered a field that would silently
+          discard their enquiry. `tabIndex={-1}` keeps it off the keyboard path
+          for the same reason. `autoComplete="off"` stops a browser or password
+          manager filling it on a real person's behalf — that one is the actual
+          false-positive risk, not bots.
+
+          `website` because it is plausible enough to be worth filling in. Do
+          not rename it to something a password manager recognises as a real
+          field ("company", "organisation"); the whole design depends on no
+          human and no autofill ever putting a value here. */}
+      <div aria-hidden className="sr-only">
+        <label htmlFor="contact-website">Website</label>
+        <input
+          id="contact-website"
+          name="website"
+          type="text"
+          tabIndex={-1}
+          autoComplete="off"
+          defaultValue=""
+        />
+      </div>
+
       <fieldset className="flex flex-col gap-4" disabled={isSubmitting}>
         <GroupLabel>Your details</GroupLabel>
 
@@ -266,8 +220,8 @@ export function ContactForm() {
           <Field label="Name" error={errors.name?.message}>
             {/* NO placeholder. A placeholder earns its place by teaching a
                 format the label cannot — "you@company.com" does that. A name
-                has no format to teach, so the slot got filled with a real
-                person's name instead ("Aneeq Ahmad"), which shipped to every
+                has no format to teach, so the slot had been filled with a real
+                person's actual name instead, which then shipped to every
                 visitor of a public contact form. Do not put a specimen name
                 back here; if this ever needs a hint, it belongs in the label. */}
             {(a11y) => (
@@ -301,112 +255,10 @@ export function ContactForm() {
           </Field>
         </div>
 
-        <Field label="Mobile" error={errors.mobile?.message}>
-          {(a11y) => (
-            <Controller
-              control={control}
-              name="mobile"
-              render={({ field, fieldState }) => (
-                <PhoneInput
-                  value={field.value}
-                  onChange={(value) => field.onChange(value ?? "")}
-                  onBlur={field.onBlur}
-                  // A FORMAT MASK, not a number. This read "300 9442848" — the
-                  // local part of CONTACT.phone, Arcompsol's own published line.
-                  // A phone field is worth a placeholder because the format is
-                  // genuinely unobvious; it is not worth a real number, which
-                  // reads as a prefilled value rather than as a hint.
-                  placeholder="3XX XXXXXXX"
-                  // SELF-HOSTED FLAGS. The library defaults flagUrl to
-                  // purecatamphetamine.github.io, so every visitor who reaches
-                  // the footer — which is every visitor, it is on every page —
-                  // silently fetches an image from a third-party GitHub Pages
-                  // host. That is an uptime dependency the site does not control,
-                  // a request that fails in any network that blocks it (a failed
-                  // image logs a console error, which Lighthouse counts against
-                  // Best Practices), and every visitor's IP handed to a host
-                  // nobody chose.
-                  //
-                  // The SVGs ship with country-flag-icons, already in
-                  // node_modules as a dependency of this library, and are copied
-                  // into public/flags. Only the selected country's file is ever
-                  // requested, so the 1.1MB directory costs one ~2KB fetch.
-                  flagUrl="/flags/{XX}.svg"
-                  defaultCountry="PK"
-                  international
-                  countryCallingCodeEditable={false}
-                  // Forwarded onto the real <input> inside PhoneInput. The ids
-                  // must land on the focusable control, not on the wrapper div,
-                  // or the label points at nothing and the error is never read.
-                  id={a11y.id}
-                  numberInputProps={{
-                    ...a11y,
-                    "aria-invalid": fieldState.invalid,
-                  }}
-                  className={cn(
-                    "flex items-center gap-3 border",
-                    FIELD,
-
-                    // FIELD's focus and error rules are written for a real
-                    // <input>; this is a <div>, so focus-visible: and
-                    // aria-invalid: on it can never match. Restated here as
-                    // focus-WITHIN and an explicit invalid branch — without
-                    // these the phone field was the only control on the form
-                    // with no focus ring and no error state.
-                    "focus-within:border-brand focus-within:ring-3 focus-within:ring-brand/30",
-                    fieldState.invalid &&
-                      "border-danger-on-dark/70 ring-3 ring-danger-on-dark/25",
-
-                    // The number input.
-                    // min-h-11 on the INPUT itself. It rendered 24px tall inside
-                    // a 44px box, so the touch target only met WCAG 2.5.5 by way
-                    // of the surrounding <label> — restructure that label and the
-                    // target silently becomes 24px. Stated here instead.
-                    "[&_.PhoneInputInput]:min-h-11",
-                    "[&_.PhoneInputInput]:bg-transparent [&_.PhoneInputInput]:text-on-dark",
-                    "[&_.PhoneInputInput]:outline-none [&_.PhoneInputInput]:placeholder:text-on-dark-muted/70",
-                    // min-w-0, or this row cannot shrink below 265px and drags the
-                    // whole document sideways at 320px. A flex item defaults to
-                    // `min-width: auto`, which on an <input> resolves to its
-                    // intrinsic size from the `size` attribute — about 20
-                    // characters — and no amount of w-full on an ancestor
-                    // overrides it. This one declaration was setting the minimum
-                    // width of the entire site: without it the document measures
-                    // 339px on a 320px phone and EVERY page scrolls horizontally,
-                    // because the footer is on every page.
-                    "[&_.PhoneInputInput]:w-full [&_.PhoneInputInput]:min-w-0",
-
-                    // The country picker is a NATIVE <select> layered over the
-                    // flag, and its dropdown is drawn by the OS on a white
-                    // popup — but it inherits `color` from this wrapper, which
-                    // is text-white. That is why the country names were white
-                    // on white. Set on the select itself, and on the options,
-                    // because browsers differ over which one the popup reads.
-                    // The country select is an invisible native <select> laid over the flag, and
-                    // it shipped at 34x42 — under the 44px minimum on both axes.
-                    // Sizing the SELECT rather than the flag grows the hit area
-                    // without changing anything visible.
-                    "[&_.PhoneInputCountry]:min-h-11",
-                    "[&_.PhoneInputCountrySelect]:min-h-11 [&_.PhoneInputCountrySelect]:min-w-11",
-                    "[&_.PhoneInputCountrySelect]:text-ink",
-                    "[&_.PhoneInputCountrySelect_option]:bg-surface",
-                    "[&_.PhoneInputCountrySelect_option]:text-ink",
-
-                    // The library's own defaults assume a light background: the
-                    // flag border is rgba(0,0,0,0.5) and the arrow is
-                    // currentColor at 0.45 — a dark line and a washed-out chevron
-                    // on a navy panel.
-                    "[--PhoneInputCountryFlag-borderColor:rgba(255,255,255,0.25)]",
-                    "[--PhoneInputCountrySelectArrow-color:rgba(255,255,255,0.55)]",
-                    "[--PhoneInputCountrySelectArrow-opacity:1]",
-                    "[&_.PhoneInputCountryIcon]:shadow-none",
-                    "[&_.PhoneInputCountry]:transition-opacity hover:[&_.PhoneInputCountry]:opacity-100",
-                  )}
-                />
-              )}
-            />
-          )}
-        </Field>
+        {/* The whole control, including ~60 lines of overrides that put a
+            light-background third-party widget onto the navy panel. See
+            phone-field.tsx. */}
+        <PhoneField control={control} error={errors.mobile?.message} />
       </fieldset>
 
       <fieldset className="mt-8 flex flex-col gap-4" disabled={isSubmitting}>

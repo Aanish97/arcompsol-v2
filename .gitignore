@@ -34,6 +34,12 @@ yarn-error.log*
 .env*
 .env*.local
 
+# ...except the template, which carries KEY NAMES ONLY and no values. Without
+# this negation `.env*` above swallows it and the one file that records what a
+# deploy needs is silently never committed. Keep the negation after the rule it
+# reverses; git applies the last matching pattern.
+!.env.example
+
 # vercel
 .vercel
 

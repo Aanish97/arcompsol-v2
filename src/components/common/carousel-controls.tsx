@@ -131,19 +131,30 @@ export function CarouselControls({
     >
       <div className="flex items-center">
         {Array.from({ length: snapCount }).map((_, index) => (
-          <button
+          <Button
             key={index}
             type="button"
+            variant="ghost"
+            size="icon-lg"
             onClick={() => api?.scrollTo(index)}
             aria-label={`Go to ${label} ${index + 1}`}
             aria-current={index === selected}
-            // The BUTTON is 44px tall with the bar drawn inside it, rather than
-            // the button being the bar. A 6x6px dot is a 1.9% hit area against
-            // the 44x44 minimum — reachable with a mouse, a lottery on a phone.
+            // The CONTROL is 44px with the bar drawn inside it, rather than the
+            // control being the bar. A 6x6px dot is a 1.9% hit area against the
+            // 44x44 minimum — reachable with a mouse, a lottery on a phone.
             // grid+place-items keeps the bar optically centred in the padding.
+            //
+            // ── WHAT THE PRIMITIVE NEEDS TALKED OUT OF ──
+            // `focus-ring` and `cursor-pointer` come from the Button base, so
+            // they are gone from here — that is the whole gain. The rest is
+            // corrective, because Button is shaped for a label and this is a
+            // 44px hit area around a 6px bar:
+            //   size-11            `icon-lg` is size-9 (36px), under the minimum
+            //   grid/place-items   base is inline-flex; the bar centres by grid
+            //   hover:bg-transparent  `ghost` fills on hover. Dots never have.
+            // group/dot stays: the bar inside reads it for its hover state.
             className={cn(
-              "group/dot grid h-11 min-w-11 cursor-pointer place-items-center",
-              "focus-ring",
+              "group/dot grid size-11 place-items-center hover:bg-transparent",
             )}
           >
             <span
@@ -159,7 +170,7 @@ export function CarouselControls({
                     : "w-1.5 bg-ink/20 group-hover/dot:bg-ink/40",
               )}
             />
-          </button>
+          </Button>
         ))}
       </div>
 

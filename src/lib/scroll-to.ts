@@ -1,9 +1,10 @@
 /**
- * The one way this site scrolls to an in-page target.
+ * The one way this site scrolls the page itself — to a section, or to the top.
  *
  * ── IN SIMPLE WORDS ──
  * "See what we do", "Let's talk", and the Services tab in the nav all move you
- * down the page to a section. This is the code that moves you, and it makes
+ * down the page to a section; "Home" and the logo move you back to the top when
+ * you are already on that page. This is the code that moves you, and it makes
  * sure you actually arrive even when the browser refuses to animate.
  *
  * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
@@ -44,29 +45,27 @@
 /** How long to wait before deciding the animation is not going to happen. */
 const SMOOTH_GRACE_MS = 120;
 
-export function scrollToId(id: string) {
-  const target = document.getElementById(id);
-  if (!target) return;
-
+/**
+ * Ask for the smooth version, check the browser ACCEPTED it, and fall back to
+ * the instant one only if it did not. The reasoning is the file header above;
+ * this is where it is actually implemented.
+ *
+ * ONE COPY, TWO CALLERS. `scrollToId` and `scrollToTop` differ only in the two
+ * calls they pass in — the grace window, the scroll-event probe and the
+ * reduced-motion branch are identical in both, and written out twice they are
+ * exactly the kind of pair that gets fixed in one place and left rotting in the
+ * other. Add a third way to scroll by calling this, not by copying it.
+ */
+function scrollVerified(smooth: () => void, instant: () => void) {
   const reduced =
     typeof window.matchMedia === "function" &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   if (reduced) {
-    target.scrollIntoView({ behavior: "instant" as ScrollBehavior });
+    instant();
     return;
   }
 
-  // Listen for the browser to START scrolling, rather than measuring how far it
-  // got. This distinction is the whole fix: a smooth scroll EASES IN, so over a
-  // short distance it can legitimately move under a pixel or two in the grace
-  // window. The first version tested displacement and so cut real glides dead
-  // partway through, turning every nav click into a hard jump on any browser
-  // where smooth scrolling actually works.
-  //
-  // A scroll event is unambiguous. If one fires, the browser is animating and
-  // this must not interfere. If none fires, it refused, and the jump is the
-  // only way the visitor arrives at all.
   const before = window.scrollY;
   let started = false;
   const onScroll = () => {
@@ -74,12 +73,53 @@ export function scrollToId(id: string) {
   };
   window.addEventListener("scroll", onScroll, { once: true, passive: true });
 
-  target.scrollIntoView({ behavior: "smooth" });
+  smooth();
 
   window.setTimeout(() => {
     window.removeEventListener("scroll", onScroll);
-    if (!started && window.scrollY === before) {
-      target.scrollIntoView({ behavior: "instant" as ScrollBehavior });
-    }
+    if (!started && window.scrollY === before) instant();
   }, SMOOTH_GRACE_MS);
+}
+
+export function scrollToId(id: string) {
+  const target = document.getElementById(id);
+  if (!target) return;
+
+  scrollVerified(
+    () => target.scrollIntoView({ behavior: "smooth" }),
+    () => target.scrollIntoView({ behavior: "instant" as ScrollBehavior }),
+  );
+}
+
+/**
+ * Back to the top of the page.
+ *
+ * ── IN SIMPLE WORDS ──
+ * What clicking "Home", or the logo, does when you are ALREADY on the home page
+ * and 4,000px down it.
+ *
+ * ── WHY IT EXISTS (change at your peril) ──
+ * NEXT'S <Link> DOES NOTHING WHEN THE DESTINATION IS THE ROUTE YOU ARE ON. The
+ * App Router treats it as a no-op: no re-render, no scroll, no error. Measured
+ * on 2026-08-17 from scrollY 4647 at the bottom of the home page — the header
+ * wordmark, the nav's "Home" tab, the footer's "Home" link and the footer
+ * wordmark all left the page exactly where it was. Four dead controls, and the
+ * two in the footer sit directly beside the contact form, which is the one
+ * place someone is most likely to want the top of the page back.
+ *
+ * ── DO NOT ──
+ * - Do not swap this for `window.scrollTo(0, 0)`. The whole reason this file
+ *   exists is that this site's smooth scrolling cannot be assumed to run; a
+ *   bare call is the version that silently does nothing.
+ */
+export function scrollToTop() {
+  // Already there. Nothing would animate, so the verification above would
+  // always take the fallback branch — harmless, but it reads as a bug to the
+  // next person stepping through it.
+  if (window.scrollY === 0) return;
+
+  scrollVerified(
+    () => window.scrollTo({ top: 0, behavior: "smooth" }),
+    () => window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior }),
+  );
 }

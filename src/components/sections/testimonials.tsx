@@ -8,12 +8,19 @@
  * they work — then what they said.
  *
  * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
- * Attribution leads. These quotes run 400–600 characters and the names attached
- * to them are the strongest asset on the site — an Executive Director at the
- * Linux Foundation, a Customer Success Manager at ModMed. The previous layout
- * centred the text and put the face underneath it, so a reader met an anonymous
- * wall of prose and only learned whose opinion it was if they finished. Reading
- * a recommendation is a different act when you already know who is speaking.
+ * Attribution leads. These quotes run 400–600 characters, and who is speaking
+ * is the strongest thing on the card — an Executive Director at the Linux
+ * Foundation, a Customer Success Manager at ModMed. The previous layout centred
+ * the text and put the attribution underneath it, so a reader met a wall of
+ * prose and only learned whose opinion it was if they finished. Reading a
+ * recommendation is a different act when you already know who is speaking.
+ *
+ * NO PERSONAL NAMES AND NO PORTRAITS — owner's call, 2026-08-17. The role and
+ * the organisation ARE the attribution now; see content/testimonials.ts for
+ * what that gives up and why. The layout is unchanged, because the argument
+ * above never depended on the person's name specifically — it depended on the
+ * reader knowing who is speaking before they start reading, and a senior title
+ * at a named organisation still does that.
  *
  * The gradient rule down the left edge is the typographic convention for a
  * blockquote, doing the job an oversized decorative quote glyph usually does —
@@ -31,7 +38,6 @@
  * - Do not re-centre the quote text. See above; the measure is set for a left
  *   edge.
  */
-import Image from "next/image";
 import { useEffect, useState } from "react";
 
 import { CarouselAutoplay } from "@/components/common/carousel-autoplay";
@@ -132,7 +138,7 @@ export function Testimonials() {
         >
           <CarouselContent>
             {TESTIMONIALS.map((testimonial, index) => (
-              <CarouselItem key={testimonial.name}>
+              <CarouselItem key={testimonial.organization}>
                 {/* A shadow, so the card sits ON the band rather than being a
                     grey rectangle cut into it. --surface-alt against the
                     section's --surface is only 3.4 L* points; the border alone
@@ -177,42 +183,29 @@ export function Testimonials() {
                           the quote are the grid's own children. */}
                     <figure className="grid gap-6 lg:contents">
                       <figcaption className="flex items-center gap-4 lg:flex-col lg:items-start lg:gap-3">
-                        {/* A PORTRAIT WHERE WE HAVE ONE, INITIALS WHERE WE DO
-                            NOT. Two of these five used to point at a shared
-                            Placeholder.png — a generic silhouette beside the
-                            real name and real employer of a real person, on the
-                            one section of the site whose entire job is
-                            credibility.
+                        {/* THE ORGANISATION'S INITIALS, and this is the
+                            intended appearance rather than a placeholder
+                            waiting for a photograph. Portraits were removed
+                            with the personal names on 2026-08-17 and the three
+                            image files were deleted with them; there is no
+                            avatar branch left to fall back from. See
+                            content/testimonials.ts.
 
-                            width/height raised to 64 to match the rendered
-                            lg:size-16. At 56 the browser was upscaling a 56px
-                            source into a 64px box on every desktop view — the
-                            one image on this card, and it was the soft one.
-                            A ring plus an offset in the card's own colour, so
-                            the portrait reads as inset into the card rather
-                            than pasted onto it; <Monogram> repeats that ring
-                            verbatim so the two sit identically in the row. */}
-                        {testimonial.avatar ? (
-                          <Image
-                            src={testimonial.avatar}
-                            alt=""
-                            width={64}
-                            height={64}
-                            className="size-12 shrink-0 rounded-full object-cover ring-2 ring-brand/25 ring-offset-2 ring-offset-surface-alt lg:size-16"
-                          />
-                        ) : (
-                          <Monogram name={testimonial.name} />
-                        )}
+                            It keeps the ring and offset the portraits carried,
+                            so the row still reads as something inset into the
+                            card rather than a letterform dropped onto it. */}
+                        <Monogram name={testimonial.organization} />
                         <div>
-                          {/* font-heading: this is the name of a real person at
-                              a named company and it is the strongest asset on
-                              the page. It was set in body weight at body size,
-                              indistinguishable from the role beneath it. */}
+                          {/* font-heading, and the ROLE is the strong line now.
+                              It used to be the person's name, with the role
+                              beneath it in support. With the name gone the two
+                              lines are the whole attribution, so the seniority
+                              takes the weight the name had. */}
                           <p className="font-heading text-base font-semibold text-ink">
-                            {testimonial.name}
+                            {testimonial.role}
                           </p>
                           {/* --ink-muted, not --ink-soft, and leading-snug: the
-                              role is support for the name, and at the same
+                              organisation supports the role, and at the same
                               colour the two lines competed. 5.83:1 on
                               --surface, comfortably past AA. */}
                           <p className="mt-1 text-sm leading-snug text-ink-muted">

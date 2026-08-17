@@ -116,10 +116,32 @@ export const FOOTER_LOCATIONS = [
   },
   {
     location: "Pakistan",
-    // The only place the office address is written; there is no structured
-    // data or metadata copy of it to keep in sync.
-    // No trailing ", Pakistan" — the `location` field directly above already
-    // reads "Pakistan" and renders 40px higher in the same block.
+    /**
+     * CONFIRMED BY THE OWNER ON 2026-08-14, exactly as written.
+     *
+     * The office moved from "305 GT road, Near Shalimar Garden, Cantt, Lahore"
+     * to this address in commit 7fe4f2e — which was titled "standardize code
+     * formatting and improve readability across components". A real business
+     * fact, changed on every page of a public site, inside a formatting
+     * commit, with nothing recorded about where it came from. Review caught it
+     * and could not verify it from the diff, which is the correct outcome: a
+     * reviewer has no way to check an address, so the only defence is that the
+     * change says who confirmed it and when.
+     *
+     * That is what this comment is for. The email two blocks up carries the
+     * same kind of note for the same reason. If this address changes again,
+     * the change is not finished until this line is updated with it.
+     *
+     * THE ONLY PLACE THE OFFICE ADDRESS IS WRITTEN — verified 2026-08-14, not
+     * assumed: no JSON-LD, no schema.org LocalBusiness or PostalAddress, no
+     * metadata, manifest or OG copy anywhere in the repo. careers.ts names the
+     * AREA only ("DHA Phase 3, Lahore") specifically so it does not become a
+     * second copy. Confirming this string once therefore settles every surface
+     * it renders on; if you add structured data later, that stops being true.
+     *
+     * No trailing ", Pakistan" — the `location` field directly above already
+     * reads "Pakistan" and renders 40px higher in the same block.
+     */
     address: "156-H Commercial Area, Sector Y DHA Phase 3, Lahore",
     phone: CONTACT.phone,
     phone2: "+92 320 4487749",
