@@ -34,7 +34,11 @@ import { ROUTES } from "@/content/site";
 
 const DESTINATIONS = [
   { href: ROUTES.HOME, label: "Home", hint: "What we build and how we work" },
-  { href: ROUTES.ABOUT, label: "About us", hint: "Who we are and what we value" },
+  {
+    href: ROUTES.ABOUT,
+    label: "About us",
+    hint: "Who we are and what we value",
+  },
   {
     href: ROUTES.CAREERS,
     label: "Careers",
@@ -66,11 +70,11 @@ export default function NotFound() {
             <li key={destination.href}>
               <Link
                 href={destination.href}
-                className="group flex h-full flex-col rounded-2xl border border-border bg-surface p-6 transition-all duration-300 hover:-translate-y-1 hover:border-brand/40 hover:shadow-[0_12px_32px_rgb(var(--shadow-tint)/0.12)] focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none"
+                className="group flex h-full flex-col rounded-2xl border border-border bg-surface p-6 transition-[transform,border-color,box-shadow] duration-220 ease-out hover:-translate-y-1 hover:border-brand/40 hover:shadow-[0_12px_32px_rgb(var(--shadow-tint)/0.12)] focus-ring"
               >
                 <span
                   aria-hidden
-                  className="mb-4 h-0.5 w-8 rounded-full bg-gradient-to-r from-brand to-brand-deep transition-all duration-300 group-hover:w-14"
+                  className="mb-4 h-0.5 w-8 origin-left rounded-full bg-gradient-to-r from-brand to-brand-deep transition-transform duration-220 ease-out group-hover:scale-x-175"
                 />
                 <span className="font-heading font-semibold text-ink">
                   {destination.label}

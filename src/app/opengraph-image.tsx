@@ -24,7 +24,7 @@
  * Dark ground on purpose. Feed backgrounds in Slack and LinkedIn are white or
  * near-white, so a light card dissolves into the surrounding chrome and a dark
  * one is bounded. This is also the only ground where the logo green is legible
- * as a text colour: #38B089 measures 6.10:1 on #16211C and 2.59:1 on paper.
+ * as a text colour: #38B089 measures 6.42:1 on #111C1A and 2.62:1 on paper.
  *
  * The font is read off disk rather than fetched. A build that reaches out to a
  * CDN fails in CI the first time the network is unavailable, and the fallback
@@ -45,6 +45,12 @@
  *   ignores them or fails the build, and neither shows up until someone shares
  *   a link.
  */
+/* impeccable-disable broken-image -- file-level, and it has to be: the only
+   <img> here takes a data: URI built from logo-white.png at build time, which
+   the detector cannot resolve through a variable. A -next-line waiver would
+   have to sit between the eslint-disable-next-line and the tag, which would
+   point eslint's waiver at a comment instead of the element. Verified: the
+   rendered card shows the logo. */
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -58,10 +64,10 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 /** Mirrors of globals.css tokens. See the doc-block: Satori cannot read vars. */
-const NAVY = "#16211C"; // --brand-navy
-const GREEN = "#38B089"; // --brand-on-dark, 6.10:1 on NAVY
-const PAPER = "#F4F7F5"; // headline, near-white with the same green bias
-const MUTED = "#8FA69B"; // client row
+const NAVY = "#111C1A"; // --brand-navy
+const GREEN = "#38B089"; // --brand-on-dark — the logo green. 6.42:1 on NAVY
+const PAPER = "#EEF3F1"; // headline, near-white with the same green bias. 15.54:1
+const MUTED = "#8FA39D"; // client row. 6.55:1 on NAVY
 
 export default async function OpengraphImage() {
   const [poppins, logo] = await Promise.all([
@@ -72,66 +78,72 @@ export default async function OpengraphImage() {
   const logoSrc = `data:image/png;base64,${logo.toString("base64")}`;
 
   return new ImageResponse(
-    (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          backgroundColor: NAVY,
-          padding: "68px 76px",
-          fontFamily: "Poppins",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- Satori
-              renders raw <img> only; next/image does not exist in this runtime. */}
-          <img src={logoSrc} alt="" width={58} height={64} />
-          <div style={{ display: "flex", fontSize: 40, color: PAPER }}>
-            Arcompsol
-          </div>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column" }}>
-          <div
-            style={{
-              display: "flex",
-              fontSize: 78,
-              lineHeight: 1.06,
-              letterSpacing: "-0.03em",
-              color: PAPER,
-            }}
-          >
-            Power your business
-          </div>
-          <div
-            style={{
-              display: "flex",
-              fontSize: 78,
-              lineHeight: 1.06,
-              letterSpacing: "-0.03em",
-              color: GREEN,
-            }}
-          >
-            with innovation
-          </div>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-          <div style={{ display: "flex", width: 72, height: 4, backgroundColor: GREEN }} />
-          <div style={{ display: "flex", fontSize: 26, color: MUTED }}>
-            {CLIENTS.map((client) => client.name).join("   ·   ")}
-          </div>
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "space-between",
+        backgroundColor: NAVY,
+        padding: "68px 76px",
+        fontFamily: "Poppins",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+        {/* A raw <img> on purpose: Satori renders this, and next/image does not
+            exist in that runtime. This used to carry an
+            `eslint-disable-next-line @next/next/no-img-element`, which the
+            linter reported as unused — the rule does not reach this file — so
+            the directive is gone and the reason stays. */}
+        <img src={logoSrc} alt="" width={58} height={64} />
+        <div style={{ display: "flex", fontSize: 40, color: PAPER }}>
+          Arcompsol
         </div>
       </div>
-    ),
+
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <div
+          style={{
+            display: "flex",
+            fontSize: 78,
+            lineHeight: 1.06,
+            letterSpacing: "-0.03em",
+            color: PAPER,
+          }}
+        >
+          Power your business
+        </div>
+        <div
+          style={{
+            display: "flex",
+            fontSize: 78,
+            lineHeight: 1.06,
+            letterSpacing: "-0.03em",
+            color: GREEN,
+          }}
+        >
+          with innovation
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+        <div
+          style={{
+            display: "flex",
+            width: 72,
+            height: 4,
+            backgroundColor: GREEN,
+          }}
+        />
+        <div style={{ display: "flex", fontSize: 26, color: MUTED }}>
+          {CLIENTS.map((client) => client.name).join("   ·   ")}
+        </div>
+      </div>
+    </div>,
     {
       ...size,
-      fonts: [
-        { name: "Poppins", data: poppins, weight: 600, style: "normal" },
-      ],
+      fonts: [{ name: "Poppins", data: poppins, weight: 600, style: "normal" }],
     },
   );
 }

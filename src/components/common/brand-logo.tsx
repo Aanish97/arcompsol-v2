@@ -16,6 +16,12 @@
  * say the same thing, so alt text would make a screen reader announce
  * "Arcompsol Arcompsol". The link's own aria-label names the destination.
  *
+ * SiteLink, not next/link, and this lockup is the reason it exists. A logo is
+ * the universal "take me back to the start" control, and a plain <Link href="/">
+ * does nothing at all when you are already on "/" — so the one control every
+ * visitor already knows how to use was dead on the longest page of the site.
+ * It renders in the header AND in the footer, which is both ends of that page.
+ *
  * The wordmark survives at every width — it is nine characters, and hiding the
  * company name on phones to save 80px is the wrong trade on a marketing site.
  *
@@ -35,8 +41,8 @@
  *   the browser computed, which is what triggered Next's aspect-ratio warning.
  */
 import Image from "next/image";
-import Link from "next/link";
 
+import { SiteLink } from "@/components/common/site-link";
 import { cn } from "@/lib/utils";
 
 import logoGreen from "../../../public/images/logo.png";
@@ -50,12 +56,12 @@ export function BrandLogo({
   className?: string;
 }) {
   return (
-    <Link
+    <SiteLink
       href="/"
       aria-label="Arcompsol home"
       className={cn(
         "group flex items-center gap-3 rounded-md",
-        "focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none",
+        "focus-ring",
         className,
       )}
     >
@@ -73,11 +79,11 @@ export function BrandLogo({
           "font-heading text-xl font-semibold tracking-tight transition-colors md:text-2xl",
           variant === "green"
             ? "text-brand-dark group-hover:text-brand-deep"
-            : "text-white",
+            : "text-on-dark",
         )}
       >
         Arcompsol
       </span>
-    </Link>
+    </SiteLink>
   );
 }

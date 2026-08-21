@@ -29,19 +29,19 @@
 import Image from "next/image";
 import { ArrowRight } from "lucide-react";
 
-import { HeroGradient } from "@/components/common/hero-gradient";
 import { HeroVisual } from "@/components/common/hero-visual";
+import { StaggerText } from "@/components/common/stagger-text";
 import { Reveal } from "@/components/common/reveal";
 import { ScrollToButton } from "@/components/common/scroll-to-button";
-import { ServiceCard } from "@/components/common/service-card";
 import {
   Section,
   SectionDescription,
   SectionHeading,
 } from "@/components/common/section";
 import { Milestones } from "@/components/sections/milestones";
+import { ServicesGrid } from "@/components/sections/services-grid";
 import { Testimonials } from "@/components/sections/testimonials";
-import { HOME_HERO, SERVICES, SERVICES_SECTION } from "@/content/home";
+import { HOME_HERO, SERVICES_SECTION } from "@/content/home";
 
 import heroImage from "../../public/images/home-hero-image.png";
 
@@ -50,11 +50,22 @@ export default function HomePage() {
 
   return (
     <>
-      {/* HeroGradient is a client component, but everything below is passed to
-          it as children — so the hero copy still renders on the server and
-          only the ~1.5 kB pointer handler ships. Same slot pattern as
-          HeroVisual, which is why neither forces this page to "use client". */}
-      <HeroGradient>
+      {/* A PLAIN SECTION. This was <HeroGradient>, a client component whose
+          washes followed the cursor; removed at the owner's request. The band
+          keeps the same two radials at their rest positions, so it looks like
+          the old hero standing still, and the page drops a pointermove listener
+          plus its bundle.
+
+          `.hero-band` carries `isolation: isolate` and that is not decoration —
+          see globals.css. The hero image is `mix-blend-multiply` and without a
+          stacking context here the blend re-composites the whole band on every
+          scroll frame. */}
+      <section aria-labelledby="hero-heading" className="hero-band w-full">
+        {/* The washes, as a LAYER. They cannot go in `.hero-band`'s own
+            background — that element is the blend isolation root for the
+            `mix-blend-multiply` illustration, and a background-image on it
+            makes the illustration disappear outright. See globals.css. */}
+        <span aria-hidden className="hero-band-wash" />
         <div className="mx-auto grid w-full max-w-6xl items-center gap-12 px-6 py-14 md:px-8 md:py-20 lg:grid-cols-[1fr_1.08fr] lg:gap-16">
           <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
             {/* A label on a rule, not a pill. Set at the same size and tracking
@@ -70,10 +81,24 @@ export default function HomePage() {
               />
             </p>
 
-            <h1 className="mt-6 text-balance">
-              {headStart}{" "}
-              <span className="bg-gradient-to-r from-brand to-brand-deep bg-clip-text text-transparent">
-                with {headAccent}
+            {/* SOLID --brand, not a clipped gradient. The accent used a
+                background-clip trick on transparent text, which two design
+                audits independently flag as an AI tell. It also failed on its
+                own terms: #1B5542 to #11362A is too short a ramp to read as a
+                gradient at any size, so it paid the cost without producing the
+                effect, and transparent text means the headline disappears
+                entirely if the clip ever fails to paint. */}
+            {/* data-stagger="load", NOT a <Reveal>. The hero is on screen at
+                first paint, so it animates on load — and it rises without
+                fading, so the words are legible from the first frame. `offset`
+                keeps one continuous count across the two halves. */}
+            <h1 id="hero-heading" data-stagger="load" className="mt-6 text-balance">
+              <StaggerText text={headStart} />{" "}
+              <span className="text-brand">
+                <StaggerText
+                  text={`with ${headAccent}`}
+                  offset={headStart.split(" ").length}
+                />
               </span>
             </h1>
 
@@ -124,17 +149,79 @@ export default function HomePage() {
             />
           </HeroVisual>
         </div>
-      </HeroGradient>
+      </section>
 
-      <Section id="services" width="wide" className="scroll-mt-20 bg-surface">
+      {/* NEGATIVE scroll-margin, and the anchor stays on the <Section>.
+          Both are load-bearing.
+
+          It must be on the Section because the panel inside is
+          `overflow-hidden`: scrollIntoView walks up scrolling each ancestor
+          scrollport, and inside a hidden box the target already counts as "in
+          view", so the walk resolves there and the DOCUMENT NEVER SCROLLS. An
+          anchor moved onto the heading's wrapper made "See what we do" a dead
+          button. Do not move this id inside the panel.
+
+          It is negative because the Section's own padding plus the panel's sits
+          above the heading — 112px stacked at base, 128 at md, 160 at lg — so a
+          positive offset parked all of that empty tint on screen and pushed the
+          second row of tiles below the fold. Offsetting it lands the HEADING
+          about 80px down, which frames the whole block: heading, description
+          and all six tiles in one screen (804px of content against 798px of
+          usable viewport at 871px tall).
+
+          Re-derive these if either padding changes: offset = 80 - (section py +
+          panel py). */}
+      <Section
+        id="services"
+        aria-labelledby="services-heading"
+        width="wide"
+        className="-scroll-mt-8 bg-surface md:-scroll-mt-12 lg:-scroll-mt-20"
+      >
         <Reveal className="w-full">
-          <div className="relative w-full overflow-hidden rounded-[2rem] border border-border bg-secondary px-6 py-14 shadow-[0_4px_24px_rgb(var(--shadow-tint)/0.06)] md:px-10 md:py-20">
-            <div aria-hidden className="bg-grid absolute inset-0" />
-
-            <div className="relative">
+          {/* services-panel adds two subtractive washes over the flat tint —
+              see globals.css. A single flat colour made this read as a box
+              drawn around the cards rather than as a surface they sit on. */}
+          <div className="services-panel relative w-full overflow-hidden rounded-3xl border border-border bg-secondary px-6 py-14 shadow-[0_4px_24px_rgb(var(--shadow-tint)/0.06)] md:px-10 md:py-20">
+            <div>
               <div className="flex flex-col items-start">
-                <SectionHeading align="start">
-                  {SERVICES_SECTION.title}
+                {/* The heading is ONE SENTENCE delivered in two halves. The
+                    lead staggers in with the section like every other heading;
+                    the last word is the one the keyboard below types, and it
+                    flies up into this slot when the board clears.
+
+                    It is in the server HTML at full strength — the hiding is a
+                    CSS class gated on prefers-reduced-motion, and layout.tsx's
+                    <noscript> rule names it too, so a crawler or a blocked
+                    bundle reads the complete sentence. */}
+                <SectionHeading id="services-heading" align="start">
+                  <>
+                    <StaggerText text={SERVICES_SECTION.titleLead} />{" "}
+                    {/* THE WHOLE SLOT IS GREEN — "at" included. It used to be
+                        only the last word, on the stated grounds that this
+                        matched "the same treatment the hero gives 'with
+                        Innovation'". It did not: the hero's accent span wraps
+                        `with ${headAccent}`, so its joining word is green too.
+                        The two headings now actually agree.
+
+                        Here rather than in globals.css because `text-brand` is
+                        a token-mapped colour utility, not a literal in a
+                        bracket — it moves with the palette, which is the whole
+                        point of the rule that keeps colour out of `bg-[...]`. */}
+                    <span
+                      data-services-wordmark
+                      className="services-wordmark text-brand"
+                    >
+                      {/* `wordmark-word`, NOT the default `stagger-word`. These
+                          words are released by the keyboard rather than by
+                          scroll, and the scroll rules are unlayered — they
+                          would beat anything scoped in @layer components and
+                          reveal these with the rest of the heading. */}
+                      <StaggerText
+                        text={SERVICES_SECTION.titleWord}
+                        className="wordmark-word"
+                      />
+                    </span>
+                  </>
                 </SectionHeading>
                 <SectionDescription align="start" className="mt-4">
                   {SERVICES_SECTION.description}
@@ -154,31 +241,32 @@ export default function HomePage() {
                   so three columns come out 195px wide, and a 139-character
                   description needs seven clipped lines in one. Two columns at
                   that width give 302px and four lines. Measure the column, not
-                  the viewport. */}
-              <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {SERVICES.map((service, index) => (
-                  <Reveal
-                    key={service.title}
-                    delay={index * 60}
-                    // h-full so the flip container inherits a real height from
-                    // the grid row. Both card faces are absolutely positioned,
-                    // so a wrapper of auto height would collapse them.
-                    className="h-full"
-                  >
-                    <ServiceCard
-                      title={service.title}
-                      description={service.description}
-                      image={service.image}
-                    />
-                  </Reveal>
-                ))}
-              </div>
+                  the viewport.
+
+                  The grid and its arrival live in sections/services-grid.tsx.
+                  It is a client component because each card's start position
+                  has to be MEASURED — it flies out of a box in the middle of
+                  the grid, and how far it travels depends on the column count.
+                  It replaced a <Reveal> per card; do not put one back around
+                  these, the two would fight over the same transform. */}
+              <ServicesGrid />
             </div>
           </div>
         </Reveal>
       </Section>
 
-      <Milestones tone="dark" />
+      {/* LIGHT, not dark. This band was --brand-navy, which put a single white
+          band (the testimonials) between two dark ones — the milestones above
+          and the footer below. One light band trapped between two dark ones
+          reads as a gap in the page rather than as a section of it.
+
+          The page gets its rhythm from PANELS and the honeycomb now, not from
+          alternating dark grounds: the services tiles sit on a --secondary
+          slab, this band carries the hex field on --surface-alt, and the
+          testimonials sit on plain --surface. The only dark ground on the site
+          is the footer, which is where a page should land rather than something
+          it passes through twice. */}
+      <Milestones />
       <Testimonials />
     </>
   );

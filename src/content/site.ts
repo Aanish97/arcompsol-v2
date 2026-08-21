@@ -36,12 +36,25 @@ export type NavItem = {
   homeOnly?: boolean;
 };
 
+/**
+ * The one label for the one contact action, used by the header button and the
+ * hero's primary CTA alike.
+ *
+ * Exported rather than repeated so the header and the hero cannot diverge —
+ * they once carried different capitalisation AND different apostrophe
+ * characters for the same button. content/home.ts imports this.
+ *
+ * U+2019 is the correct apostrophe for an English contraction. Sentence case,
+ * because every other control on the site is sentence case.
+ */
+export const CONTACT_CTA = "Let’s talk";
+
 export const NAV_ITEMS: NavItem[] = [
   { label: "Home", href: ROUTES.HOME },
   { label: "Services", href: ROUTES.SERVICES, homeOnly: true },
   { label: "Careers", href: ROUTES.CAREERS },
   { label: "About", href: ROUTES.ABOUT },
-  { label: "Let's Talk", href: ROUTES.LETS_TALK, highlight: true },
+  { label: CONTACT_CTA, href: ROUTES.LETS_TALK, highlight: true },
 ];
 
 export type FooterLink = { label: string; href: string | null };
@@ -79,18 +92,82 @@ export const SOCIAL_LINKS = [
   },
 ];
 
+/**
+ * The one email and phone number, referenced rather than retyped.
+ *
+ * The footer, the mobile nav panel and the contact form's failure message all
+ * print these. They were literals in three files, which is how a changed
+ * address ends up updated in one place and stale in the others — the address
+ * moved from arcompsol@gmail.com to aanish@arcompsol.com on 2026-08-12 and the
+ * form's error toast still carried the old one.
+ *
+ * ── THIS IS THE PUBLIC ADDRESS, AND IT IS NOT THE SENDING ACCOUNT ──
+ * `aanish@arcompsol.com` became `aanish.amir@arcompsol.com` on 2026-08-21 —
+ * two strings for the same person, and only one of them a real mailbox.
+ *
+ * It is the address a visitor emails BY HAND: the footer prints it, both office
+ * blocks link it, and the three "Apply now" buttons on /careers open a draft to
+ * it. `SMTP_EMAIL` is a different thing — the credentialed account the contact
+ * form authenticates as — and the two are deliberately allowed to differ.
+ *
+ * WHY THEY SHOULD DIFFER, measured 2026-08-21: while `SMTP_EMAIL` was this same
+ * mailbox, every enquiry was from the reader to the reader, so Gmail's message
+ * list collapsed the sender to "me" — verified in the inbox, four submissions
+ * in a row. A display name does not beat it; Gmail matches on the ADDRESS, and
+ * `CONTACT_TO` cannot help because it sets the recipient, not the sender. The
+ * fix is a separate sending account (noreply@ or similar) in `SMTP_EMAIL`,
+ * which leaves this line untouched.
+ *
+ * ── DO NOT ──
+ * - Do not "sync" this with SMTP_EMAIL. Making them equal is what produced the
+ *   "me" display, and it also publishes a credentialed account address.
+ * - Do not put a noreply@ address here. This one has to be a mailbox somebody
+ *   reads, because the site invites strangers to write to it.
+ */
+export const CONTACT = {
+  email: "aanish.amir@arcompsol.com",
+  phone: "+92 300 9442848",
+} as const;
+
 export const FOOTER_LOCATIONS = [
   {
-    location: "UNITED STATES",
-    // Was "Comming Soon!" — a misspelling sitting in the footer of every page.
+    // Sentence case in the DATA, not via CSS — styling an all-caps string as
+    // normal text leaves it shouting.
+    location: "United States",
     address: "Coming soon",
-    email: "arcompsol@gmail.com",
+    email: CONTACT.email,
   },
   {
-    location: "PAKISTAN",
-    address: "305 GT road, Near Shalimar Garden, Cantt, Lahore",
-    phone: "+92 300 9442848",
+    location: "Pakistan",
+    /**
+     * CONFIRMED BY THE OWNER ON 2026-08-14, exactly as written.
+     *
+     * The office moved from "305 GT road, Near Shalimar Garden, Cantt, Lahore"
+     * to this address in commit 7fe4f2e — which was titled "standardize code
+     * formatting and improve readability across components". A real business
+     * fact, changed on every page of a public site, inside a formatting
+     * commit, with nothing recorded about where it came from. Review caught it
+     * and could not verify it from the diff, which is the correct outcome: a
+     * reviewer has no way to check an address, so the only defence is that the
+     * change says who confirmed it and when.
+     *
+     * That is what this comment is for. The email two blocks up carries the
+     * same kind of note for the same reason. If this address changes again,
+     * the change is not finished until this line is updated with it.
+     *
+     * THE ONLY PLACE THE OFFICE ADDRESS IS WRITTEN — verified 2026-08-14, not
+     * assumed: no JSON-LD, no schema.org LocalBusiness or PostalAddress, no
+     * metadata, manifest or OG copy anywhere in the repo. careers.ts names the
+     * AREA only ("DHA Phase 3, Lahore") specifically so it does not become a
+     * second copy. Confirming this string once therefore settles every surface
+     * it renders on; if you add structured data later, that stops being true.
+     *
+     * No trailing ", Pakistan" — the `location` field directly above already
+     * reads "Pakistan" and renders 40px higher in the same block.
+     */
+    address: "156-H Commercial Area, Sector Y DHA Phase 3, Lahore",
+    phone: CONTACT.phone,
     phone2: "+92 320 4487749",
-    email: "arcompsol@gmail.com",
+    email: CONTACT.email,
   },
 ];

@@ -7,19 +7,19 @@
  * Click it and the page glides down to the part it names.
  *
  * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
- * Not a plain <a href="#id">. Two of the targets on this site do not exist in
- * the document when the page first paints:
+ * Not a plain <a href="#id">, because #services exists only on the home page.
+ * A native hash link against a missing id does nothing at all, silently, and on
+ * a Next route that has not finished painting it can jump to a stale offset
+ * instead. scrollToId's getElementById guard no-ops safely, which is the
+ * difference between a CTA that does nothing visible and one that scrolls
+ * somewhere wrong.
  *
- *   #contact-form  lives inside the footer form, which is loaded with
- *                  next/dynamic ssr:false — until that chunk arrives the DOM
- *                  holds a placeholder with no id at all.
- *   #services      exists only on the home page.
- *
- * A native hash link against a missing id does nothing at all, silently, and
- * on a Next route that has not finished painting it can jump to a stale
- * offset instead. getElementById + the optional-chaining call below no-ops
- * safely in both cases, which is the difference between a CTA that does
- * nothing visible and one that scrolls somewhere wrong.
+ * #contact-form USED TO BE THE OTHER CASE and no longer is. The id sat on the
+ * <form>, inside a next/dynamic ssr:false chunk, so it was in no page's server
+ * HTML and this button did nothing for the first ~1036ms of every page view.
+ * It moved to a server-rendered wrapper in site-footer.tsx on 2026-08-17 and is
+ * now present from first paint. Do not "simplify" this back to a hash link on
+ * the strength of that: #services is still missing on two routes.
  *
  * scroll-behavior: smooth is set globally in globals.css, so scrollIntoView
  * inherits the easing rather than restating it — and it is correctly ignored
@@ -33,6 +33,7 @@
 import type { ComponentProps } from "react";
 
 import { Button } from "@/components/ui/button";
+import { scrollToId } from "@/lib/scroll-to";
 
 export function ScrollToButton({
   targetId,
@@ -42,7 +43,14 @@ export function ScrollToButton({
   return (
     <Button
       {...props}
-      onClick={() => document.getElementById(targetId)?.scrollIntoView()}
+      // The destination, in the DOM. A <button> carries no href, so a listener
+      // watching for people heading somewhere cannot see this one at all —
+      // contact-form-lazy.tsx uses it to start fetching the form chunk on the
+      // same tick the scroll starts. Generic on purpose: it states where the
+      // button goes and names no particular consumer, so nothing here has to
+      // know the contact form exists.
+      data-scroll-target={targetId}
+      onClick={() => scrollToId(targetId)}
     >
       {children}
     </Button>

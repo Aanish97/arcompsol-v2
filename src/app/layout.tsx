@@ -27,9 +27,11 @@
 import type { Metadata } from "next";
 import { Open_Sans, Poppins } from "next/font/google";
 
+import { BandOrderCheck } from "@/components/dev/band-check";
 import { SiteHeader } from "@/components/layout/site-header";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Toaster } from "@/components/ui/sonner";
+import { cn } from "@/lib/utils";
 
 import "./globals.css";
 
@@ -65,14 +67,27 @@ const openSans = Open_Sans({
   display: "swap",
 });
 
+/**
+ * One sentence, three tags: the meta description, og:description and
+ * twitter:description. It was written out three times, and every copy still
+ * carried the old filler after the hero had been rewritten — which is exactly
+ * how a stale claim survives an edit. Declared once so the search snippet and
+ * the share card cannot disagree.
+ *
+ * This is the sentence Google prints under the result and the one that sits
+ * beneath every pasted link, so it claims only what the testimonials say:
+ * shipped on time, and reachable while it happens.
+ */
+const SITE_DESCRIPTION =
+  "We ship scalable software on time, and stay reachable while we do it.";
+
 export const metadata: Metadata = {
   metadataBase: new URL("https://arcompsol.com"),
   title: {
     default: "Arcompsol",
     template: "%s | Arcompsol",
   },
-  description:
-    "We help brands make better decisions by delivering world-class, scalable solutions that drive growth and success.",
+  description: SITE_DESCRIPTION,
   icons: {
     icon: [
       { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
@@ -98,14 +113,12 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: "https://arcompsol.com",
     title: "Arcompsol",
-    description:
-      "We help brands make better decisions by delivering world-class, scalable solutions that drive growth and success.",
+    description: SITE_DESCRIPTION,
   },
   twitter: {
     card: "summary_large_image",
     title: "Arcompsol",
-    description:
-      "We help brands make better decisions by delivering world-class, scalable solutions that drive growth and success.",
+    description: SITE_DESCRIPTION,
   },
 };
 
@@ -121,15 +134,36 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       // in-page anchor scrolling (the nav's #services and #contact-form tabs)
       // smooth, which is the only place smooth was ever wanted.
       data-scroll-behavior="smooth"
-      className={`${poppins.variable} ${openSans.variable} h-full antialiased`}
+      className={cn(poppins.variable, openSans.variable, "h-full antialiased")}
     >
       <head>
         {/* Scroll-reveal starts elements hidden and JavaScript reveals them. If
             the bundle is blocked, fails, or is still loading, this is what stops
             the page rendering blank. It is the difference between a degraded
-            experience and no experience. */}
+            experience and no experience.
+
+            FOUR MECHANISMS, ALL LISTED. [data-reveal] is the general scroll
+            reveal; .pop-item is the services grid, whose cards are released by
+            JavaScript; .wordmark-word is the last two words of the services
+            heading, which the keyboard animation delivers (both in
+            services-grid.tsx). Add any future hidden-until-scrolled state here
+            in the same change that introduces it — the failure is silent and
+            only shows up with the bundle blocked.
+
+            The wordmark matters most of the four: without this rule the
+            services heading reads "Services we provide" and stops, losing the
+            half of the sentence the animation was going to deliver.
+
+            [data-spine-line] is the fourth and it is the odd one out — it hides
+            with `stroke-dashoffset`, not with opacity or a transform, so it
+            needs its own declaration rather than joining the list above. It is
+            the process timeline's drawn line (common/milestone-spine.tsx),
+            which anime.js draws on scroll and which is therefore blank when no
+            script runs. The gradient track underneath is a plain element and is
+            unaffected either way, so this is the difference between a finished
+            spine and a slightly quieter one — not between a spine and nothing. */}
         <noscript>
-          <style>{`[data-reveal]{opacity:1 !important;transform:none !important}`}</style>
+          <style>{`[data-reveal],.pop-item,.wordmark-word{opacity:1 !important;transform:none !important}[data-spine-line]{stroke-dashoffset:0 !important}`}</style>
         </noscript>
       </head>
       <body className="flex min-h-full flex-col">
@@ -138,18 +172,34 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             tabs before reaching any content — on every single navigation. It is
             visually hidden until focused, which is the point: it costs sighted
             users nothing and is the first stop for everyone else. */}
+        {/* min-h-11 AND items-center, not more padding. Measured focused at
+            146x40 — 4px under the 44px this project holds every other target
+            to, because the height came from `py-2` plus whatever the line box
+            happened to be. Padding-derived height is only correct until the
+            font or line-height moves; a min-height states the requirement and
+            survives both. inline-flex is what lets items-center do the
+            vertical centring once the box is taller than the text. */}
         <a
           href="#main"
-          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-100 focus:rounded-lg focus:bg-brand focus:px-4 focus:py-2 focus:font-medium focus:text-white"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-100 focus:inline-flex focus:min-h-11 focus:items-center focus:rounded-lg focus:bg-brand focus:px-4 focus:font-medium focus:text-on-brand"
         >
           Skip to content
         </a>
         <SiteHeader />
-        <main id="main" className="flex-1">
+        {/* scroll-mt-20: the skip link jumps here, and a keyboard user landing
+            with the top of main tucked under the sticky header is the exact
+            failure the skip link exists to prevent. */}
+        <main id="main" className="flex-1 scroll-mt-20">
           {children}
         </main>
         <SiteFooter />
         <Toaster position="top-center" richColors />
+        {/* Development-only, renders nothing, ships nothing. It warns when two
+            touching bands share a ground — a mistake this project has made
+            three times because band order is a property of the PAGE while the
+            ground is chosen per SECTION, in six places, two of them shared
+            across routes. See components/dev/band-check.tsx. */}
+        {process.env.NODE_ENV !== "production" && <BandOrderCheck />}
       </body>
     </html>
   );

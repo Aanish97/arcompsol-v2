@@ -9,6 +9,20 @@ const nextConfig: NextConfig = {
   // function". Listing it here leaves it as a plain runtime require.
   serverExternalPackages: ["emailjs"],
 
+  // Ship browser source maps in production.
+  //
+  // Lighthouse Best Practices flags "Missing source maps for large first-party
+  // JavaScript" without them, and more usefully: a production error otherwise
+  // arrives as an unreadable stack through minified chunk names, which is
+  // exactly when you need to read it.
+  //
+  // The trade-off is deliberate — .map files make the original source
+  // retrievable by anyone who looks. That is acceptable here because this is a
+  // public marketing site whose client bundle holds no secrets; every secret
+  // lives in .env and is read server-side only. Do NOT copy this setting into
+  // a project where the client code is itself proprietary.
+  productionBrowserSourceMaps: true,
+
   // Without this Next walks up looking for a lockfile, finds ~/package-lock.json
   // outside the repo, and warns on every build.
   turbopack: {

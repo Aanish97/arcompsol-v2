@@ -31,14 +31,33 @@ export const VALUES = [
     description:
       "We say what we mean, directly, candidly, and sincerely, but always with empathy and respect.",
   },
+  /**
+   * APPROVED BY THE OWNER AS WRITTEN, 2026-08-14. These are the company's
+   * words now. They are not drafts and the note that said so is gone.
+   *
+   * Kept as a record because of how they got here. Both shipped for a while
+   * marked `// DRAFT — pending the owner's own wording`, survived an audit and
+   * two rounds of code review in that state, and read well enough that nobody
+   * would have guessed they were unapproved — which is exactly why a draft in
+   * a comment is a bad place to keep one. Review is what surfaced it; the
+   * owner then read both sentences and adopted them.
+   *
+   * The distinction worth preserving: the three values above were AUTHORED by
+   * the owner, these two were RATIFIED by him. If the values are ever
+   * revisited, that is the difference between them.
+   */
   {
     heading: "Ownership",
+    // "outcome, not the task" mirrors "what we mean" / "with empathy" above:
+    // each value names the easy version and then the one we hold to.
     description:
-      "We do the right thing even when it's the harder option, and especially when no one's looking.",
+      "We own the outcome, not just the task, and we fix what is ours before anyone has to ask.",
   },
   {
     heading: "Commitment",
+    // The original ran two clauses to say one thing. The difficult part IS the
+    // commitment, so the sentence ends on it.
     description:
-      "Improving global outcomes is our top priority at work, and it is also the foundation for individual success.",
+      "We finish what we start, and we stay through the part of a project that is hard.",
   },
 ];

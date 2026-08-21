@@ -24,13 +24,28 @@
  * benefits carousel shows three per view, so six items are four snap positions,
  * not six. Counting children would render two dots that go nowhere.
  *
+ * THE PAUSE BUTTON is rendered when `pausable` is set. NO CALLER CURRENTLY
+ * SETS IT — both carousels dropped it by owner decision on 2026-08-12, so this
+ * branch is dormant rather than dead, kept as the one-word way back.
+ *
+ * It is a WCAG 2.2.2 requirement, not a nicety: content that advances on its
+ * own for more than five seconds needs a control that stops it, and
+ * pause-on-hover does not count — it cannot be reached from a keyboard or
+ * announced to a screen reader. Both carousels autoplay at 6s and therefore
+ * currently fail that criterion; see the comments at their call sites.
+ *
+ * It writes `data-autoplay-paused` onto the carousel root rather than lifting
+ * state, because the timer lives in a sibling component. See carousel-autoplay.
+ *
+ * If autoplay is ever removed, remove this control in the same change.
+ *
  * ── DO NOT ──
  * - Do not drop the `api.off` cleanup. Reveal-heavy pages mount and unmount
  *   these; leaked listeners fire on a disposed component and set state after
  *   unmount.
  */
-import { ArrowLeft, ArrowRight } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { ArrowLeft, ArrowRight, Pause, Play } from "lucide-react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useCarousel } from "@/components/ui/carousel";
@@ -38,78 +53,160 @@ import { cn } from "@/lib/utils";
 
 export function CarouselControls({
   label,
+  pausable = false,
+  tone = "light",
   className,
 }: {
   /** Names what is being paged, for screen readers: "testimonial", "benefit". */
   label: string;
+  /** Set wherever a CarouselAutoplay is rendered. Required for WCAG 2.2.2. */
+  pausable?: boolean;
+  /**
+   * The ground these sit on. NOT cosmetic: the light dots are --ink at 20% and
+   * the arrows are shadcn's `outline`, which is --border on --background — on a
+   * navy band all three are effectively invisible. The benefits carousel moved
+   * to a dark band and every control on it disappeared.
+   */
+  tone?: "light" | "dark";
   className?: string;
 }) {
+  const dark = tone === "dark";
   const { api, scrollPrev, scrollNext } = useCarousel();
-  const [selected, setSelected] = useState(0);
-  const [snapCount, setSnapCount] = useState(0);
+  const [paused, setPaused] = useState(false);
 
-  const sync = useCallback(() => {
+  /**
+   * Read from Embla, do not mirror it. Same reasoning as ui/carousel.tsx: this
+   * was two `useState`s seeded by a `sync()` call in an effect body, so the
+   * dots rendered as "1 of 0" for one frame and every select cost a second
+   * render. Subscribing directly means the dot row is right on first paint.
+   */
+  const subscribe = useCallback(
+    (onStoreChange: () => void) => {
+      if (!api) return () => {};
+      api.on("select", onStoreChange);
+      api.on("reInit", onStoreChange);
+      return () => {
+        api.off("select", onStoreChange);
+        api.off("reInit", onStoreChange);
+      };
+    },
+    [api],
+  );
+
+  const selected = useSyncExternalStore(
+    subscribe,
+    () => api?.selectedScrollSnap() ?? 0,
+    () => 0,
+  );
+  // scrollSnapList() allocates a fresh array each call, so its LENGTH is what
+  // is read here. Returning the array itself would hand useSyncExternalStore a
+  // new identity every render and spin forever.
+  const snapCount = useSyncExternalStore(
+    subscribe,
+    () => api?.scrollSnapList().length ?? 0,
+    () => 0,
+  );
+
+  const togglePaused = useCallback(() => {
     if (!api) return;
-    setSelected(api.selectedScrollSnap());
-    setSnapCount(api.scrollSnapList().length);
+    setPaused((wasPaused) => {
+      const next = !wasPaused;
+      api.rootNode().dataset.autoplayPaused = String(next);
+      return next;
+    });
   }, [api]);
-
-  useEffect(() => {
-    if (!api) return;
-    sync();
-    api.on("select", sync);
-    api.on("reInit", sync);
-    return () => {
-      api.off("select", sync);
-      api.off("reInit", sync);
-    };
-  }, [api, sync]);
 
   return (
     <div
       className={cn(
-        "mt-8 flex w-full items-center justify-between gap-6",
+        // WRAPS. Once the pause button joined prev/next there were three 44px
+        // targets plus up to six 44px dots, and at 390px that row needed 392px
+        // inside 342px of content width — 26px of horizontal page scroll on a
+        // phone. flex-wrap drops the button group onto its own line instead of
+        // pushing the document wider. Re-measure at 390px before adding a
+        // fourth control; this row has no slack left.
+        "mt-8 flex w-full flex-wrap items-center justify-between gap-x-6 gap-y-4",
         className,
       )}
     >
       <div className="flex items-center">
         {Array.from({ length: snapCount }).map((_, index) => (
-          <button
+          <Button
             key={index}
             type="button"
+            variant="ghost"
+            size="icon-lg"
             onClick={() => api?.scrollTo(index)}
             aria-label={`Go to ${label} ${index + 1}`}
             aria-current={index === selected}
-            // The BUTTON is 44px tall with the bar drawn inside it, rather than
-            // the button being the bar. A 6x6px dot is a 1.9% hit area against
-            // the 44x44 minimum — reachable with a mouse, a lottery on a phone.
+            // The CONTROL is 44px with the bar drawn inside it, rather than the
+            // control being the bar. A 6x6px dot is a 1.9% hit area against the
+            // 44x44 minimum — reachable with a mouse, a lottery on a phone.
             // grid+place-items keeps the bar optically centred in the padding.
+            //
+            // ── WHAT THE PRIMITIVE NEEDS TALKED OUT OF ──
+            // `focus-ring` and `cursor-pointer` come from the Button base, so
+            // they are gone from here — that is the whole gain. The rest is
+            // corrective, because Button is shaped for a label and this is a
+            // 44px hit area around a 6px bar:
+            //   size-11            `icon-lg` is size-9 (36px), under the minimum
+            //   grid/place-items   base is inline-flex; the bar centres by grid
+            //   hover:bg-transparent  `ghost` fills on hover. Dots never have.
+            // group/dot stays: the bar inside reads it for its hover state.
             className={cn(
-              "group/dot grid h-11 min-w-11 cursor-pointer place-items-center",
-              "focus-visible:rounded focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:outline-none",
+              "group/dot grid size-11 place-items-center hover:bg-transparent",
             )}
           >
             <span
               aria-hidden
               className={cn(
-                "block h-1.5 rounded-full transition-all duration-300",
+                "block h-1.5 rounded-full transition-[width,background-color] duration-220 ease-out",
                 index === selected
-                  ? "w-8 bg-gradient-to-r from-brand to-brand-deep"
-                  : "w-1.5 bg-ink/20 group-hover/dot:bg-ink/40",
+                  ? dark
+                    ? "w-8 bg-brand-on-dark"
+                    : "w-8 bg-gradient-to-r from-brand to-brand-deep"
+                  : dark
+                    ? "w-1.5 bg-on-dark/25 group-hover/dot:bg-on-dark/50"
+                    : "w-1.5 bg-ink/20 group-hover/dot:bg-ink/40",
               )}
             />
-          </button>
+          </Button>
         ))}
       </div>
 
       <div className="flex items-center gap-2">
+        {pausable && (
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-lg"
+            onClick={togglePaused}
+            aria-label={paused ? `Play ${label}s` : `Pause ${label}s`}
+            aria-pressed={paused}
+            className={cn(
+              "size-11 rounded-full",
+              dark &&
+                "border-night-line bg-night-alt text-on-dark hover:bg-night-line hover:text-on-dark focus-ring-dark",
+            )}
+          >
+            {paused ? (
+              <Play className="size-4" />
+            ) : (
+              <Pause className="size-4" />
+            )}
+          </Button>
+        )}
         <Button
           type="button"
           variant="outline"
           size="icon-lg"
           onClick={scrollPrev}
           aria-label={`Previous ${label}`}
-          className="size-11 rounded-full"
+          className={cn(
+            "size-11 rounded-full",
+            dark &&
+              "border-night-line bg-night-alt text-on-dark hover:bg-night-line hover:text-on-dark focus-ring-dark",
+          )}
         >
           <ArrowLeft className="size-4" />
         </Button>
@@ -119,7 +216,11 @@ export function CarouselControls({
           size="icon-lg"
           onClick={scrollNext}
           aria-label={`Next ${label}`}
-          className="size-11 rounded-full"
+          className={cn(
+            "size-11 rounded-full",
+            dark &&
+              "border-night-line bg-night-alt text-on-dark hover:bg-night-line hover:text-on-dark",
+          )}
         >
           <ArrowRight className="size-4" />
         </Button>

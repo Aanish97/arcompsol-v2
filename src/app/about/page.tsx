@@ -31,11 +31,22 @@ export default function AboutPage() {
   return (
     <>
       <Section
+        aria-labelledby="about-hero-heading"
         width="wide"
-        className="relative bg-[radial-gradient(60%_60%_at_50%_0%,rgba(31,95,75,0.16)_0%,transparent_70%),linear-gradient(180deg,rgba(255,255,255,0.92)_0%,rgba(255,255,255,0.96)_100%),url('/images/pexels-photo-by-sora-shimazaki.jpg')] bg-cover bg-center bg-no-repeat"
+        // The photo band is a named class in globals.css, not an arbitrary
+        // value here. It was three colour literals inline — including the
+        // PREVIOUS brand green — which no palette sweep could reach, so the
+        // band silently kept the old theme. See .about-hero.
+        className="about-hero relative"
+        // The heading rises word by word on LOAD, like the home hero's. Both
+        // secondary heroes had no arrival at all: they are above the fold so
+        // they cannot wait for an observer, and nothing else was animating
+        // them, so the page simply appeared. `load` rises WITHOUT fading —
+        // above-the-fold copy must be legible from the first frame.
+        data-stagger="load"
       >
         <SectionEyebrow>Who we are</SectionEyebrow>
-        <SectionHeading as="h1" tone="brand">
+        <SectionHeading id="about-hero-heading" as="h1" tone="brand">
           {ABOUT_HERO.title}
         </SectionHeading>
         <SectionDescription className="mt-6">
@@ -43,9 +54,19 @@ export default function AboutPage() {
         </SectionDescription>
       </Section>
 
-      <Section width="wide" align="start" className="bg-surface-alt">
+      {/* --surface, NOT --surface-alt. The milestones band below is
+          --surface-alt too, so the two ran together as one 2,440px slab with
+          nothing marking where the values ended and the process began. Bands
+          are what give a page its rhythm; two of the same colour in a row are
+          one band with a heading in the middle of it. */}
+      <Section
+        aria-labelledby="who-we-are-heading"
+        width="wide"
+        align="start"
+        className="bg-surface"
+      >
         <Reveal className="flex w-full flex-col items-start">
-          <SectionHeading tone="brand" align="start">
+          <SectionHeading id="who-we-are-heading" tone="brand" align="start">
             {WHO_WE_ARE.title}
           </SectionHeading>
           <SectionDescription tone="brand" align="start" className="mt-4">
@@ -53,10 +74,15 @@ export default function AboutPage() {
           </SectionDescription>
         </Reveal>
 
-        <div className="mt-12 grid w-full gap-6 md:grid-cols-3">
+        {/* A list: five values, and a screen reader should say so before
+            reading them. <Reveal> renders the <li> itself rather than sitting
+            inside one, so nothing comes between the <ul> and its items —
+            a wrapper there makes the list have zero children. */}
+        <ul className="mt-12 grid w-full gap-6 md:grid-cols-3">
           {VALUES.map((value, index) => (
             <Reveal
               key={value.heading}
+              as="li"
               delay={index * 60}
               className={cn("h-full", index === 0 && "md:col-span-2")}
             >
@@ -67,7 +93,7 @@ export default function AboutPage() {
               />
             </Reveal>
           ))}
-        </div>
+        </ul>
       </Section>
 
       <Milestones />
