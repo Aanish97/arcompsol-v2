@@ -100,9 +100,32 @@ export const SOCIAL_LINKS = [
  * address ends up updated in one place and stale in the others — the address
  * moved from arcompsol@gmail.com to aanish@arcompsol.com on 2026-08-12 and the
  * form's error toast still carried the old one.
+ *
+ * ── THIS IS THE PUBLIC ADDRESS, AND IT IS NOT THE SENDING ACCOUNT ──
+ * `aanish@arcompsol.com` became `aanish.amir@arcompsol.com` on 2026-08-21 —
+ * two strings for the same person, and only one of them a real mailbox.
+ *
+ * It is the address a visitor emails BY HAND: the footer prints it, both office
+ * blocks link it, and the three "Apply now" buttons on /careers open a draft to
+ * it. `SMTP_EMAIL` is a different thing — the credentialed account the contact
+ * form authenticates as — and the two are deliberately allowed to differ.
+ *
+ * WHY THEY SHOULD DIFFER, measured 2026-08-21: while `SMTP_EMAIL` was this same
+ * mailbox, every enquiry was from the reader to the reader, so Gmail's message
+ * list collapsed the sender to "me" — verified in the inbox, four submissions
+ * in a row. A display name does not beat it; Gmail matches on the ADDRESS, and
+ * `CONTACT_TO` cannot help because it sets the recipient, not the sender. The
+ * fix is a separate sending account (noreply@ or similar) in `SMTP_EMAIL`,
+ * which leaves this line untouched.
+ *
+ * ── DO NOT ──
+ * - Do not "sync" this with SMTP_EMAIL. Making them equal is what produced the
+ *   "me" display, and it also publishes a credentialed account address.
+ * - Do not put a noreply@ address here. This one has to be a mailbox somebody
+ *   reads, because the site invites strangers to write to it.
  */
 export const CONTACT = {
-  email: "aanish@arcompsol.com",
+  email: "aanish.amir@arcompsol.com",
   phone: "+92 300 9442848",
 } as const;
 
