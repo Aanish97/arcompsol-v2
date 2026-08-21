@@ -100,9 +100,23 @@ export const SOCIAL_LINKS = [
  * address ends up updated in one place and stale in the others — the address
  * moved from arcompsol@gmail.com to aanish@arcompsol.com on 2026-08-12 and the
  * form's error toast still carried the old one.
+ *
+ * ── IT IS NOW THE SENDING ACCOUNT TOO — owner's call, 2026-08-21 ──
+ * `aanish@arcompsol.com` became `aanish.amir@arcompsol.com`, which is the
+ * mailbox `SMTP_EMAIL` authenticates as. The two were different strings for the
+ * same person, and .env.example still says of SMTP_EMAIL: "This is NOT the
+ * address printed on the site." That is no longer true, deliberately — one
+ * address is now printed, authenticated with, sent from, and delivered to.
+ *
+ * WHAT THAT COSTS, so the next person does not rediscover it: an enquiry is
+ * from this account to this account, so Gmail lists it as "me" and Reply
+ * addresses the reader. That is inherent to the sender and the recipient being
+ * one mailbox — `CONTACT_TO` cannot change it, because "me" is decided by the
+ * From header. Splitting them again means a separate sending account, not a
+ * different value here.
  */
 export const CONTACT = {
-  email: "aanish@arcompsol.com",
+  email: "aanish.amir@arcompsol.com",
   phone: "+92 300 9442848",
 } as const;
 
