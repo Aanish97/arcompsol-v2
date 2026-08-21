@@ -11,13 +11,24 @@
  *   Both come from the environment, so moving mailboxes is configuration and
  *   never a code change. See `inboxFor` below for why `from` must be the
  *   authenticated account specifically.
- * - IT GOES TO THE BUSINESS ONLY. The person who filled the form is NOT
- *   copied; the recipient list takes nothing from user input. That is a
- *   security property rather than a preference — see the note on `to:`.
+ * - THE ENQUIRY GOES TO THE BUSINESS ONLY. The submitter is not a recipient
+ *   of it; that message's `to:` takes nothing from user input. A security
+ *   property rather than a preference — see the note on `to:`.
+ * - THE SUBMITTER GETS A SEPARATE RECEIPT (2026-08-21) confirming their message
+ *   arrived. It quotes nothing they wrote. That is the whole reason it can be
+ *   sent to an address they chose — see `buildReceiptText`.
+ * - IT READS AS BEING FROM THE PERSON, WITHOUT CLAIMING TO BE. The From
+ *   address is always `SMTP_EMAIL`; the submitter's name rides in the display
+ *   name, so an inbox shows "Jane Doe via Arcompsol website". Gmail rejects any
+ *   other From address outright — see the note on `from:`.
+ * - REPLY GOES TO THE ENQUIRER (2026-08-21). Both templates state this in their
+ *   footer; the header and the copy have to change together.
  * - Additional recipients come from CONTACT_CC (comma-separated). They were
  *   two personal Gmail addresses hardcoded in the original handler; who gets
  *   copied is an operational decision, not a code change.
- * - The subject line is "<their subject> - Contact Form Submission".
+ * - The subject line is "<their name> — <their subject>", so the inbox list
+ *   shows who wrote in. Gmail prints "me" in the sender column for these; see
+ *   the note on `subject:` for why that cannot be fixed in the header.
  *
  *   THESE TWO RULES WERE BOTH STALE, found in review 2026-08-17. The first said
  *   "sent from support@arcompsol.com" — a hardcoded address removed long
@@ -70,6 +81,56 @@ import { contactSchema } from "@/lib/contact-schema";
  * enquiries should land somewhere other than the mailbox doing the sending.
  */
 const inboxFor = (sender: string) => process.env.CONTACT_TO?.trim() || sender;
+
+/**
+ * The submitter's name, made safe to sit in a `From` display name.
+ *
+ * ── IN SIMPLE WORDS ──
+ * An enquiry arrives reading "Jane Doe via Arcompsol website" instead of the
+ * company's own address, so the inbox shows WHO wrote in without the mail
+ * pretending to come from them. This is the part that scrubs the name first.
+ *
+ * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
+ * THE NAME IS ATTACKER-CONTROLLED AND IT LANDS IN A HEADER. `contactSchema`
+ * caps it at 100 characters and requires it to be non-empty; it restricts no
+ * CHARACTER, so anything can be in it.
+ *
+ * emailjs closes the obvious hole — `sanitizeHeaderValue` strips CR and LF, so
+ * CRLF header injection (CWE-93) is handled in the library, and `mimeWordEncode`
+ * takes care of non-ASCII names. IT DOES NOT CLOSE THIS ONE: `from` is run
+ * through `addressparser`, which collects every `<...>` it finds and then keeps
+ * THE FIRST. A name of `Bob <attacker@evil.com>` therefore produces
+ * `Bob <attacker@evil.com> <us@arcompsol.com>`, and the attacker's address is
+ * the one that wins the From header. Verified against
+ * node_modules/emailjs/dist/address.js:144.
+ *
+ * Gmail would refuse to send that — it only accepts the authenticated mailbox
+ * as From — so the practical result is a bounced enquiry rather than a spoofed
+ * one. That is a failure mode, not a defence, and it disappears the day this
+ * moves to a relay that is less strict.
+ *
+ * So the angle brackets and the @ go, along with the quoting and grouping
+ * characters that could break the display name out of its own field.
+ *
+ * ── DO NOT ──
+ * - Do not put the raw `name` into any header. That is the entire point of
+ *   this function.
+ * - Do not use this for the body. Body text is escaped by `escapeHtml` for the
+ *   HTML part and needs no escaping in the text part; stripping punctuation
+ *   there would corrupt what someone actually wrote.
+ */
+function senderLabel(name: string) {
+  const cleaned = name
+    .replace(/[<>@,;:"\\\[\]\x00-\x1f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 60)
+    .trim();
+
+  // A name made entirely of stripped characters leaves nothing to show. The
+  // fallback is generic on purpose: it must not imply a name we do not have.
+  return cleaned || "Website enquiry";
+}
 
 /** Neutralises HTML so a submission cannot inject markup into the email. */
 function escapeHtml(value: string) {
@@ -232,7 +293,7 @@ Message:
 ${body}
 
 --
-Reply to this message and it goes to Arcompsol.
+Reply to this message and it goes to ${name} <${email}>.
 Contact form · arcompsol.com`;
 }
 
@@ -342,8 +403,129 @@ function buildEmailHtml(
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.surfaceAlt};border-top:1px solid ${C.border};">
               <tr>
                 <td style="padding:20px 40px;font-family:${SANS};font-size:13px;line-height:20px;color:${C.inkMuted};">
-                  Reply to this message and it goes to Arcompsol.
+                  Reply to this message and it goes to ${safe.name} &lt;${safe.email}&gt;.
                   <span style="display:block;margin-top:6px;font-family:${MONO};font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:${C.inkMuted};">Contact form &middot; arcompsol.com</span>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>`;
+}
+
+/**
+ * The receipt the submitter gets — and every word of it is a constant.
+ *
+ * ── IN SIMPLE WORDS ──
+ * "We got your message." Nothing else. It does not quote what they wrote, does
+ * not greet them by name, and carries no detail from the form at all.
+ *
+ * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
+ * THIS FUNCTION TAKES NO ARGUMENTS, AND THAT IS THE SECURITY PROPERTY. It is
+ * the design the note on `to:` laid down when the submitter's copy was removed
+ * on 2026-08-17: "a SEPARATE message with fixed content — no name, no subject,
+ * no body from the submission."
+ *
+ * The exposure being avoided: the recipient of this message is chosen by
+ * whoever posts the form. If any of their text rode along with it, this
+ * endpoint would let a stranger send mail of their own composition, to an
+ * address of their choosing, FROM arcompsol.com — passing SPF and DKIM,
+ * because it genuinely is from this domain. That is a phishing tool, and the
+ * fact that the message is called a "receipt" changes nothing about it.
+ *
+ * Fixed content collapses that to something harmless: the worst an attacker can
+ * do is make a stranger receive this exact paragraph, which says only that a
+ * form was submitted and that the reader can ignore it.
+ *
+ * IT SAYS OUT LOUD THAT NO COPY IS ENCLOSED. Otherwise the omission reads as a
+ * broken template, and someone will "fix" it by interpolating the body back in.
+ *
+ * ── DO NOT ──
+ * - Do not add a parameter to this function. Not the name, not the subject, not
+ *   a reference number derived from their input. If you need one, read the
+ *   paragraph above twice first.
+ * - Do not merge this back into the enquiry as a second `to:` recipient. One
+ *   message cannot serve both readers; that is what made it an open relay.
+ */
+const RECEIPT_SUBJECT = "We received your message — Arcompsol";
+
+const RECEIPT_LINES = [
+  "Thanks for getting in touch. Your message reached Arcompsol and someone will read it and reply to this address.",
+  "You do not need to do anything else.",
+  "For your security this confirmation does not include a copy of what you sent. If you did not contact Arcompsol, no action is needed — you can ignore this message.",
+] as const;
+
+function buildReceiptText() {
+  return `Arcompsol
+
+${RECEIPT_LINES.join("\n\n")}
+
+--
+Replies to this message go to Arcompsol.
+arcompsol.com`;
+}
+
+function buildReceiptHtml() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>We received your message</title>
+</head>
+<body style="margin:0;padding:0;background-color:${C.surfaceAlt};">
+<div style="display:none;font-size:1px;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">Your message reached Arcompsol. Someone will reply to this address.</div>
+
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.surfaceAlt};padding:40px 16px;">
+  <tr>
+    <td align="center">
+      <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background-color:${C.surface};border:1px solid ${C.border};border-radius:16px;overflow:hidden;">
+
+        <!-- The same masthead as the enquiry mail, with a different marker.
+             "RECEIVED" rather than "ENQUIRY": this is the copy that goes OUT to
+             a stranger, and "enquiry" is the internal word for it. -->
+        <tr>
+          <td style="padding:22px 32px;background-color:${C.brandNavy};background-image:linear-gradient(135deg,${C.brandDark} 0%,${C.brandNavy} 100%);">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="font-family:${SANS};font-size:17px;font-weight:bold;letter-spacing:-0.01em;color:${C.onDark};">Arcompsol</td>
+                <td align="right" style="font-family:${MONO};font-size:10px;letter-spacing:0.14em;text-transform:uppercase;color:${C.onDarkMuted};">Received</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- NO NAME IN THE HEADLINE. "Hi <name>" would be the submitter's own
+             text rendered in a mail we send to an address they chose. See the
+             doc-block above. -->
+        <tr>
+          <td style="padding:34px 40px 0 40px;">
+            <p style="margin:0;font-family:${SANS};font-size:27px;line-height:34px;font-weight:600;letter-spacing:-0.02em;color:${C.ink};">We got your message</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:22px 40px 0 40px;font-family:${SANS};font-size:16px;line-height:27px;color:${C.inkSoft};">
+            <p style="margin:0 0 16px 0;">${RECEIPT_LINES[0]}</p>
+            <p style="margin:0 0 16px 0;">${RECEIPT_LINES[1]}</p>
+            <p style="margin:0;font-size:14px;line-height:23px;color:${C.inkMuted};">${RECEIPT_LINES[2]}</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td style="padding:32px 0 0 0;">
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${C.surfaceAlt};border-top:1px solid ${C.border};">
+              <tr>
+                <td style="padding:20px 40px;font-family:${SANS};font-size:13px;line-height:20px;color:${C.inkMuted};">
+                  Replies to this message go to Arcompsol.
+                  <span style="display:block;margin-top:6px;font-family:${MONO};font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:${C.inkMuted};">arcompsol.com</span>
                 </td>
               </tr>
             </table>
@@ -530,8 +712,9 @@ export async function POST(request: Request) {
     .map((address) => address.trim())
     .filter(Boolean);
 
-  // The mailbox that actually reads enquiries. Used as a recipient AND as the
-  // reply-to, so the two can never disagree about where a reply lands.
+  // The mailbox that actually reads enquiries — the sole recipient. It was the
+  // reply-to as well until 2026-08-21; that is now the enquirer's address, so
+  // this is a delivery destination and nothing else.
   const inbox = inboxFor(user);
 
   const client = new SMTPClient({
@@ -564,7 +747,35 @@ export async function POST(request: Request) {
           alternative: true,
         },
       ],
-      from: user,
+      /**
+       * THE ADDRESS IS OURS; THE NAME IS THEIRS. This reads in an inbox as
+       * "Jane Doe via Arcompsol website", which is what an enquiry should look
+       * like — you can see who wrote in from the message list, without opening
+       * it and without the mail claiming to BE from them.
+       *
+       * ── WHY THE ADDRESS CANNOT BE THE SUBMITTER'S ──
+       * Gmail rejects any From that is not the authenticated mailbox or a
+       * verified alias on it. Put the submitter's address here and every
+       * enquiry bounces, with correct credentials. It would also be exactly the
+       * spoofing that SPF and DKIM exist to stop: mail that genuinely passes
+       * this domain's checks while claiming to come from a stranger.
+       *
+       * So the identity rides in the DISPLAY NAME, which carries no
+       * authentication meaning and cannot be mistaken for the sending account.
+       * `senderLabel` scrubs it first — see that function for what a raw name
+       * does to the address parser.
+       *
+       * "via Arcompsol website" is not decoration. Without it the mail reads as
+       * though the person sent it themselves, and the next person to look at
+       * the inbox has no way to tell a form submission from real correspondence.
+       *
+       * ── IT DOES NOT STOP GMAIL SAYING "me" ──
+       * Gmail decides that from the ADDRESS, not the display name, and this
+       * address is the mailbox reading the enquiry. A separate sending account
+       * is the only thing that changes it. Do not "fix" that by moving the
+       * submitter's address into this field; see above for what happens.
+       */
+      from: `${senderLabel(name)} via Arcompsol website <${user}>`,
       /**
        * ONE RECIPIENT, AND IT IS A FIXED ONE. Do not add a caller-supplied
        * address back to this array.
@@ -591,31 +802,148 @@ export async function POST(request: Request) {
        * Worst case now: somebody fills this inbox with junk. That is a nuisance
        * with a delete key, not a mail sent AS Arcompsol to a client.
        *
-       * ── IF A RECEIPT IS EVER WANTED ──
-       * Send it as a SEPARATE message with fixed content — no name, no subject,
-       * no body from the submission. The moment attacker-controlled text rides
-       * to an attacker-controlled address, this is back, whatever the second
-       * message is called. The form's on-screen toast is the acknowledgement
-       * until then.
+       * ── THE RECEIPT NOW EXISTS, AND IT IS STILL NOT THIS LINE ──
+       * Added 2026-08-21, built to the rule this note laid down: a SEPARATE
+       * message with fixed content — no name, no subject, no body from the
+       * submission. It is sent after this one succeeds; see the block at the
+       * end of the try. The moment attacker-controlled text rides to an
+       * attacker-controlled address, the exposure above is back, whatever the
+       * second message is called.
        */
       to: [inbox],
-      // REPLIES GO TO ARCOMPSOL, NOT TO THE ENQUIRER — owner's call,
-      // 2026-08-17, reversing what this line used to do.
-      //
-      // It was `email`, so the business could hit Reply and reach the person.
-      // That is the action that happens daily and losing it is a real cost.
-      // The reason it went anyway: this mail is delivered to BOTH parties and
-      // there is only one reply-to header, so it can serve only one of them.
-      // Pointed at the enquirer, the footer could never honestly tell them how
-      // to follow up — their own Reply addressed themselves.
-      //
-      // THE BUSINESS KEEPS A ONE-TAP ROUTE TO THE PERSON: their address is a
-      // mailto link in the contact block above. That is what makes this trade
-      // affordable, so do not remove that link without revisiting this.
-      "reply-to": inbox,
+      /**
+       * REPLIES REACH THE ENQUIRER — owner's call, 2026-08-21, restoring what
+       * this line did before 2026-08-17.
+       *
+       * ── WHY IT WENT AWAY, AND WHY THAT REASON EXPIRED ──
+       * It was pointed at `inbox` because the mail was then delivered to BOTH
+       * parties — `to: [inbox, email]` — and there is only one reply-to header,
+       * so it could serve only one of them. Aimed at the enquirer, the footer
+       * could not honestly tell them how to follow up: their own Reply
+       * addressed themselves.
+       *
+       * THAT PREMISE IS GONE. `to:` above is `[inbox]` alone; the submitter has
+       * not been copied since the open-relay fix on the same day. One recipient
+       * means the header has only one reader to serve, and the useful thing for
+       * that reader is to reach the person who wrote in. The comment here
+       * outlived the code it described by four days and argued for a trade that
+       * was no longer being made.
+       *
+       * ── WHAT DEPENDS ON THIS ──
+       * Both templates print "Reply to this message and it goes to <name>
+       * <address>", in the text part and the HTML part. They said "to
+       * Arcompsol" while this said `inbox`; change one and the other becomes a
+       * lie. Grep for "goes to" before touching this line.
+       *
+       * ── WHY A CALLER-SUPPLIED ADDRESS IS SAFE HERE, when it was not on `to:` ──
+       * `to:` decides DELIVERY, which is what made the old array an open relay:
+       * a stranger chose both the recipient and the body, and the mail left this
+       * domain passing SPF and DKIM. Reply-To decides nothing. It sends no mail
+       * and reaches nobody; it only pre-fills the To field if a human at
+       * Arcompsol chooses to reply. `contactSchema` has already validated the
+       * address, and emailjs strips CR/LF from header values.
+       *
+       * Do NOT read this as permission to put `email` back into `to:`.
+       */
+      "reply-to": email,
       ...(cc.length ? { cc } : {}),
-      subject: `${subject} - Contact Form Submission`,
+      /**
+       * THE NAME LEADS THE SUBJECT, and that is doing a job the From header
+       * cannot.
+       *
+       * ── IN SIMPLE WORDS ──
+       * Gmail's message list prints "me" in the sender column for every one of
+       * these, because the mail is sent from the same account that reads it. So
+       * the subject is where "who wrote in" has to live — it sits in the same
+       * row, immediately to the right of that "me".
+       *
+       * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
+       * MEASURED IN THE INBOX, 2026-08-21: four submissions in a row all listed
+       * as "me". Putting the submitter's name in the From DISPLAY name fixes the
+       * opened message and the details popup, and loses to Gmail in the list —
+       * it matches on the ADDRESS and overrides the display name entirely. The
+       * owner's constraint is that `SMTP_EMAIL` stays the mailbox that also
+       * reads the mail, so the address cannot differ and "me" cannot be removed.
+       *
+       * This is the part of the row Gmail does not rewrite. "Aneeq Ahmad — Site
+       * redesign" tells you who and what before you open anything.
+       *
+       * IT REPLACED "<subject> - Contact Form Submission". That suffix said the
+       * same thing on every message, so it bought nothing at a glance and pushed
+       * the real subject rightwards into the truncation. Filtering does not need
+       * it: every enquiry comes from SMTP_EMAIL, so a Gmail filter on `from:`
+       * catches them all and keeps working if this wording ever changes.
+       *
+       * ── DO NOT ──
+       * - Do not sanitize `name` with `senderLabel` here. That strips @ and
+       *   commas because an ADDRESS PARSER reads the From header; nothing parses
+       *   a subject, and "Smith, John" would arrive as "Smith John". CR and LF
+       *   are already removed by emailjs's `sanitizeHeaderValue`, which is the
+       *   only injection risk a subject actually carries.
+       */
+      subject: `${name} — ${subject}`,
     });
+
+    /**
+     * ── THE SUBMITTER'S RECEIPT ─────────────────────────────────────────────
+     *
+     * ── IN SIMPLE WORDS ──
+     * A second, separate email telling the person who filled the form that it
+     * arrived. It carries none of what they wrote.
+     *
+     * ── WHY IT'S BUILT THIS WAY (change at your peril) ──
+     * IT IS SENT AFTER THE ENQUIRY, AND ONLY IF THE ENQUIRY SUCCEEDED. Being
+     * inside this `try` after the `await` above is what guarantees that. A
+     * receipt that goes out when the enquiry did not is worse than no receipt:
+     * it tells a customer they have been heard while their message is gone,
+     * and nobody at Arcompsol ever learns there was a message.
+     *
+     * ITS OWN try/catch, AND THE ERROR IS SWALLOWED ON PURPOSE. The enquiry is
+     * already delivered by this point and cannot be un-sent. Letting a failed
+     * receipt fall through to the outer catch would return 500, the form would
+     * show its failure message, and the person would submit again — producing a
+     * duplicate enquiry every time. The submitter's copy is a courtesy; the
+     * business's copy is the product. Never fail the request for the courtesy.
+     *
+     * The `console.error` is what stops that being a silent failure: a receipt
+     * that never arrives is traceable in the log rather than simply absent.
+     *
+     * ── WHAT IT COSTS, so nobody rediscovers it ──
+     * - TWO SENDS PER SUBMISSION against the mailbox's daily quota. The rate
+     *   limit above meters ATTEMPTS, not messages, so one allowance now buys
+     *   two sends. Halve RATE_LIMIT.max if quota ever becomes the binding
+     *   constraint.
+     * - It delivers to an address supplied by the caller, which is the one
+     *   thing `to:` above refuses to do. That is only acceptable because the
+     *   content is a constant — read `buildReceiptText`'s doc-block before
+     *   changing a single word of it.
+     *
+     * ── DO NOT ──
+     * - Do not move this above the enquiry send. See the first paragraph.
+     * - Do not `await` it outside a try/catch, and do not rethrow.
+     */
+    try {
+      await client.sendAsync({
+        text: buildReceiptText(),
+        attachment: [{ data: buildReceiptHtml(), alternative: true }],
+        // "Arcompsol", not the submitter's name — this one is going TO them, so
+        // their own name in the sender slot would read as mail from themselves.
+        from: `Arcompsol <${user}>`,
+        // The one place a caller-supplied address is a DELIVERY target. Safe
+        // only because nothing above it varies; see the doc-block.
+        to: [email],
+        // Reply reaches the business. The enquiry's reply-to points the other
+        // way, at this person — the two messages have opposite readers, which
+        // is exactly why they are two messages.
+        "reply-to": inbox,
+        subject: RECEIPT_SUBJECT,
+      });
+    } catch (error) {
+      console.error(
+        "[contact] receipt to submitter failed — the enquiry itself WAS sent:",
+        error,
+      );
+    }
 
     return NextResponse.json({ message: "Sent" });
   } catch (error) {
